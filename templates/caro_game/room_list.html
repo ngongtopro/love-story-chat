@@ -1,0 +1,224 @@
+{% extends 'base.html' %}
+
+{% block title %}Caro Game Rooms{% endblock %}
+
+{% block extra_head %}
+<style>
+    .gradient-bg {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    }
+    .room-card {
+        transition: all 0.3s ease;
+    }
+    .room-card:hover {
+        transform: translateY(-4px);
+        box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+    }
+    .status-waiting {
+        background: linear-gradient(45deg, #10b981, #34d399);
+    }
+    .status-playing {
+        background: linear-gradient(45deg, #f59e0b, #fbbf24);
+    }
+    .pulse-animation {
+        animation: pulse 2s infinite;
+    }
+    @keyframes pulse {
+        0%, 100% { opacity: 1; }
+        50% { opacity: 0.7; }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="min-h-screen gradient-bg py-8">
+    <div class="container mx-auto px-4">
+        <div class="max-w-6xl mx-auto">
+            <!-- Header -->
+            <div class="text-center mb-8">
+                <h1 class="text-4xl font-bold text-white mb-4">
+                    🎯 Caro Game Rooms
+                </h1>
+                <p class="text-white/80 text-lg">
+                    Join an existing room or create your own
+                </p>
+            </div>
+
+            <!-- Action Buttons -->
+            <div class="flex flex-col sm:flex-row gap-4 mb-8 justify-center">
+                <a href="{% url 'caro_game:create_room_caro_game' %}" 
+                   class="bg-green-600 hover:bg-green-700 text-white font-semibold py-3 px-6 rounded-lg transition duration-300 transform hover:scale-105 text-center">
+                    ➕ Create New Room
+                </a>
+                <button onclick="window.location.reload()" 
+                        class="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-6 rounded-lg transition duration-300 transform hover:scale-105">
+                    🔄 Refresh Rooms
+                </button>
+                <a href="{% url 'chat:home' %}" 
+                   class="bg-gray-600 hover:bg-gray-700 text-white font-semibold py-3 px-6 rounded-lg transition duration-300 text-center">
+                    🏠 Back to Home
+                </a>
+            </div>
+
+            {% if error %}
+                <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded-lg mb-6 max-w-2xl mx-auto">
+                    <strong>Error:</strong> {{ error }}
+                </div>
+            {% endif %}
+
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                <!-- Waiting Rooms -->
+                <div class="bg-white rounded-xl shadow-lg p-6">
+                    <h2 class="text-2xl font-bold text-gray-800 mb-4 flex items-center">
+                        <span class="status-waiting text-white px-3 py-1 rounded-full text-sm mr-3 pulse-animation">OPEN</span>
+                        Rooms Looking for Players
+                    </h2>
+
+                    {% if waiting_rooms %}
+                        <div class="space-y-4">
+                            {% for room in waiting_rooms %}
+                                <div class="room-card border border-gray-200 rounded-lg p-4 hover:border-green-400">
+                                    <div class="flex items-center justify-between">
+                                        <div class="flex-1">
+                                            <h3 class="font-semibold text-gray-800 text-lg">{{ room.room_name }}</h3>
+                                            <p class="text-sm text-gray-600 mt-1">
+                                                Created by: <span class="font-medium text-green-600">{{ room.player1.username }}</span>
+                                            </p>
+                                            <p class="text-xs text-gray-500 mt-1">
+                                                {{ room.created_at|timesince }} ago
+                                            </p>
+                                            <div class="flex items-center mt-2">
+                                                <span class="text-sm text-green-600 font-medium">💰 Bet: 10,000 coins</span>
+                                            </div>
+                                        </div>
+                                        <div class="ml-4">
+                                            {% if room.player1.username == current_user %}
+                                                <a href="{% url 'caro_game:caro_game_room' room_name=room.room_name %}" 
+                                                   class="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-lg transition duration-300 text-sm">
+                                                    🎮 Enter Room
+                                                </a>
+                                            {% else %}
+                                                <a href="{% url 'caro_game:caro_game_room' room_name=room.room_name %}" 
+                                                   class="bg-green-600 hover:bg-green-700 text-white font-medium py-2 px-4 rounded-lg transition duration-300 text-sm">
+                                                    ⚡ Join Game
+                                                </a>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                </div>
+                            {% endfor %}
+                        </div>
+                    {% else %}
+                        <div class="text-center py-8">
+                            <div class="text-gray-400 text-6xl mb-4">🎯</div>
+                            <p class="text-gray-600 mb-4">No rooms waiting for players</p>
+                            <a href="{% url 'caro_game:create_room_caro_game' %}" 
+                               class="bg-green-600 hover:bg-green-700 text-white font-semibold py-2 px-4 rounded-lg transition duration-300">
+                                Create First Room
+                            </a>
+                        </div>
+                    {% endif %}
+                </div>
+
+                <!-- Playing Rooms -->
+                <div class="bg-white rounded-xl shadow-lg p-6">
+                    <h2 class="text-2xl font-bold text-gray-800 mb-4 flex items-center">
+                        <span class="status-playing text-white px-3 py-1 rounded-full text-sm mr-3">LIVE</span>
+                        Games in Progress
+                    </h2>
+
+                    {% if playing_rooms %}
+                        <div class="space-y-4">
+                            {% for room in playing_rooms %}
+                                <div class="room-card border border-gray-200 rounded-lg p-4 hover:border-yellow-400">
+                                    <div class="flex items-center justify-between">
+                                        <div class="flex-1">
+                                            <h3 class="font-semibold text-gray-800 text-lg">{{ room.room_name }}</h3>
+                                            <p class="text-sm text-gray-600 mt-1">
+                                                <span class="font-medium text-blue-600">{{ room.player1.username }}</span> 
+                                                <span class="text-gray-400">vs</span> 
+                                                <span class="font-medium text-red-600">{{ room.player2.username }}</span>
+                                            </p>
+                                            <p class="text-xs text-gray-500 mt-1">
+                                                Playing for {{ room.updated_at|timesince }}
+                                            </p>
+                                            <div class="flex items-center mt-2">
+                                                <span class="text-sm text-yellow-600 font-medium">💰 Prize Pool: {{ room.total_pot|floatformat:0 }} coins</span>
+                                            </div>
+                                        </div>
+                                        <div class="ml-4">
+                                            {% if room.player1.username == current_user or room.player2.username == current_user %}
+                                                <a href="{% url 'caro_game:caro_game_room' room_name=room.room_name %}" 
+                                                   class="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-lg transition duration-300 text-sm">
+                                                    🎮 Continue Game
+                                                </a>
+                                            {% else %}
+                                                <span class="bg-gray-400 text-white font-medium py-2 px-4 rounded-lg text-sm cursor-not-allowed">
+                                                    👀 Spectate
+                                                </span>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                </div>
+                            {% endfor %}
+                        </div>
+                    {% else %}
+                        <div class="text-center py-8">
+                            <div class="text-gray-400 text-6xl mb-4">🎲</div>
+                            <p class="text-gray-600">No games currently in progress</p>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Game Rules -->
+            <div class="bg-white rounded-xl shadow-lg p-6 mt-8">
+                <h2 class="text-2xl font-bold text-gray-800 mb-4">📋 Game Rules</h2>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                        <h4 class="font-semibold text-gray-700 mb-2">🎯 Objective</h4>
+                        <p class="text-gray-600 text-sm">Get 5 pieces in a row (horizontal, vertical, or diagonal) to win!</p>
+                    </div>
+                    <div>
+                        <h4 class="font-semibold text-gray-700 mb-2">💰 Betting</h4>
+                        <p class="text-gray-600 text-sm">Each player bets 10,000 coins. Winner takes 18,000 coins (10% house fee).</p>
+                    </div>
+                    <div>
+                        <h4 class="font-semibold text-gray-700 mb-2">⏰ Time Limit</h4>
+                        <p class="text-gray-600 text-sm">Each turn has a 60-second time limit. Timeout results in automatic loss.</p>
+                    </div>
+                    <div>
+                        <h4 class="font-semibold text-gray-700 mb-2">🚫 Abandoning</h4>
+                        <p class="text-gray-600 text-sm">Abandoning a game results in automatic loss and forfeit of bet.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Auto-refresh every 30 seconds
+    setInterval(function() {
+        // Only refresh if no games are in progress for current user
+        const continueButtons = document.querySelectorAll('[href*="caro_game_room"]:not([class*="bg-gray"])');
+        if (continueButtons.length === 0) {
+            window.location.reload();
+        }
+    }, 30000);
+    
+    // Add click tracking
+    document.querySelectorAll('.room-card').forEach(card => {
+        card.addEventListener('click', function(e) {
+            if (!e.target.closest('a')) {
+                const joinButton = this.querySelector('a');
+                if (joinButton) {
+                    joinButton.click();
+                }
+            }
+        });
+    });
+});
+</script>
+{% endblock %}

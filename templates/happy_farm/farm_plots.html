@@ -1,0 +1,74 @@
+<div class="lg:col-span-2">
+    <div class="bg-white rounded-lg shadow-sm border p-4 sm:p-6">
+        <div class="flex items-center justify-between mb-4">
+            <h2 class="text-lg sm:text-xl font-bold text-gray-800">🌱 Your Farm</h2>
+            <button 
+                onclick="refreshFarmStatus()" 
+                class="bg-green-600 hover:bg-green-700 text-white px-3 py-1.5 rounded-lg transition duration-200 flex items-center space-x-1 text-sm"
+            >
+                <i class="fas fa-sync-alt" id="refresh-icon"></i>
+                <span>Refresh</span>
+            </button>
+        </div>
+        
+        {% if farm_exists %}
+            <div class="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-3 sm:gap-4">
+                {% for plot in plots %}
+                    <div 
+                        class="farm-plot" 
+                        data-plot-id="{{ plot.id }}" 
+                        data-plot-number="{{ forloop.counter0 }}" 
+                        data-state="{{ plot.state }}"
+                    >
+                        {% if plot.state == 'empty' %}
+                            <div class="text-center text-gray-400">
+                                <div class="text-2xl mb-1">🌱</div>
+                                <div class="text-xs font-medium">Empty</div>
+                                <div class="text-xs">Click to plant</div>
+                            </div>
+                        {% elif plot.state == 'planted' %}
+                            <div class="text-center">
+                                <div class="text-2xl mb-1">{{ plot.crop_type.emoji }}</div>
+                                <div class="text-xs font-medium">{{ plot.crop_type.name }}</div>
+                                <div class="time-remaining" 
+                                     data-ready-at="{{ plot.ready_at|date:'c' }}"
+                                     data-planted-at="{{ plot.planted_at|date:'c' }}">
+                                    Growing...
+                                </div>
+                                <div class="w-full bg-gray-200 rounded-full h-1.5 mt-1">
+                                    <div class="progress-bar bg-blue-500 h-1.5 rounded-full" 
+                                         data-planted-at="{{ plot.planted_at|date:'c' }}"
+                                         data-ready-at="{{ plot.ready_at|date:'c' }}"></div>
+                                </div>
+                            </div>
+                        {% elif plot.state == 'ready' %}
+                            <div class="text-center animate-pulse">
+                                <div class="text-3xl mb-1">{{ plot.crop_type.emoji }}</div>
+                                <div class="text-xs font-bold text-green-700">Ready!</div>
+                                <div class="text-xs text-green-600">Click to harvest</div>
+                                <div class="time-remaining text-red-600" 
+                                     data-withers-at="{{ plot.withers_at|date:'c' }}">
+                                    Withers soon!
+                                </div>
+                            </div>
+                        {% elif plot.state == 'withered' %}
+                            <div class="text-center">
+                                <div class="text-2xl mb-1">💀</div>
+                                <div class="text-xs font-medium text-red-600">Withered</div>
+                                <div class="text-xs text-red-500">Click to clear</div>
+                            </div>
+                        {% endif %}
+                        
+                        <div class="absolute top-1 left-1 text-xs text-gray-500">{{ forloop.counter }}</div>
+                    </div>
+                {% endfor %}
+            </div>
+        {% else %}
+            <div class="text-center py-12">
+                <div class="text-gray-400 text-6xl mb-4">🚧</div>
+                <h3 class="text-xl font-bold text-gray-600 mb-2">Farm Not Available</h3>
+                <p class="text-gray-500">Your farm is being prepared...</p>
+            </div>
+        {% endif %}
+    </div>
+</div>

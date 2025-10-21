@@ -1,0 +1,279 @@
+{% extends 'base.html' %}
+
+{% block title %}Love Chat - Home{% endblock %}
+
+{% block content %}
+<div class="container mx-auto px-4 py-6">
+    <!-- Header Section -->
+    <div class="mb-8">
+        <h1 class="text-3xl font-bold text-gray-800 mb-2">Các cuộc trò chuyện của tôi</h1>
+        <p class="text-gray-600">Kết nối với bạn bè qua các cuộc trò chuyện riêng tư</p>
+
+        <!-- Real-time Stats -->
+        <div class="flex gap-4 mt-4">
+            <div class="bg-green-100 text-green-800 px-3 py-1 rounded-full text-sm">
+                <span class="font-semibold" id="online-count">0</span> người dùng trực tuyến
+            </div>
+            <div class="bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-sm">
+                <span class="font-semibold" id="active-rooms-count">0</span> phòng trò chuyện đang hoạt động
+            </div>
+            <div class="bg-purple-100 text-purple-800 px-3 py-1 rounded-full text-sm">
+                <span class="font-semibold" id="active-games-count">0</span> trò chơi đang hoạt động
+            </div>
+        </div>
+    </div>
+
+    <!-- Quick Actions -->
+    <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
+        <a href="{% url 'caro_game:list_caro_rooms' %}" 
+           class="bg-gradient-to-r from-blue-500 to-purple-600 text-white p-4 rounded-lg hover:from-blue-600 hover:to-purple-700 transition-colors duration-200 shadow-lg">
+            <div class="flex items-center gap-3">
+                <span class="text-2xl">🎯</span>
+                <div>
+                    <h3 class="font-semibold">Chơi cờ Caro</h3>
+                    <p class="text-sm opacity-90">Thách đấu với bạn bè</p>
+                </div>
+            </div>
+        </a>
+        
+        <a href="{% url 'user_wallet:wallet' %}" 
+           class="bg-gradient-to-r from-green-500 to-teal-600 text-white p-4 rounded-lg hover:from-green-600 hover:to-teal-700 transition-colors duration-200 shadow-lg">
+            <div class="flex items-center gap-3">
+                <span class="text-2xl">💰</span>
+                <div>
+                    <h3 class="font-semibold">Ví của tôi</h3>
+                    <p class="text-sm opacity-90">Kiểm tra số dư</p>
+                </div>
+            </div>
+        </a>
+        
+        <a href="{% url 'happy_farm:farm' %}" 
+           class="bg-gradient-to-r from-yellow-500 to-orange-600 text-white p-4 rounded-lg hover:from-yellow-600 hover:to-orange-700 transition-colors duration-200 shadow-lg">
+            <div class="flex items-center gap-3">
+                <span class="text-2xl">🌾</span>
+                <div>
+                    <h3 class="font-semibold">Nông trại vui vẻ</h3>
+                    <p class="text-sm opacity-90">Trồng trọt</p>
+                </div>
+            </div>
+        </a>
+        
+        <a href="{% url 'chat:profile' %}" 
+           class="bg-gradient-to-r from-purple-500 to-pink-600 text-white p-4 rounded-lg hover:from-purple-600 hover:to-pink-700 transition-colors duration-200 shadow-lg">
+            <div class="flex items-center gap-3">
+                <span class="text-2xl">👤</span>
+                <div>
+                    <h3 class="font-semibold">Hồ sơ cá nhân</h3>
+                    <p class="text-sm opacity-90">Chỉnh sửa hồ sơ</p>
+                </div>
+            </div>
+        </a>
+    </div>
+
+    <!-- Active Chats -->
+    <div class="bg-white rounded-lg shadow-md mb-8">
+        <div class="bg-gray-50 px-6 py-4 border-b">
+            <h2 class="text-xl font-semibold text-gray-800">Các cuộc hội thoại</h2>
+        </div>
+        <div class="p-6">
+            {% include 'chat/list_chat.html' %}
+        </div>
+    </div>
+
+    <!-- Start New Chat -->
+    <div class="bg-white rounded-lg shadow-md">
+        <div class="bg-gray-50 px-6 py-4 border-b">
+            <h2 class="text-xl font-semibold text-gray-800">Danh sách trực tuyến</h2>
+        </div>
+        
+        <div class="p-6">
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {% include 'chat/list_user.html' %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Load initial online status immediately
+    updateOnlineStatusFallback();
+    
+    // WebSocket connection for real-time updates
+    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    const wsUrl = `${protocol}//${window.location.host}/ws/home/`;
+    
+    let socket;
+    let socketConnected = false;
+    
+    function connectWebSocket() {
+        try {
+            socket = new WebSocket(wsUrl);
+            
+            socket.onopen = function(e) {
+                console.log('Home WebSocket connected');
+                socketConnected = true;
+                stopFallbackPolling(); // Stop fallback since WebSocket is working
+                
+                // Request current online users
+                socket.send(JSON.stringify({
+                    'type': 'get_online_users'
+                }));
+                
+                // Set up periodic refresh via WebSocket every 30 seconds
+                if (window.wsInterval) clearInterval(window.wsInterval);
+                window.wsInterval = setInterval(() => {
+                    if (socket.readyState === WebSocket.OPEN) {
+                        socket.send(JSON.stringify({
+                            'type': 'get_online_users'
+                        }));
+                    }
+                }, 30000);
+            };
+            
+            socket.onmessage = function(e) {
+                const data = JSON.parse(e.data);
+                
+                if (data.type === 'online_users_update') {
+                    updateOnlineStatus(data.online_users);
+                }
+            };
+            
+            socket.onclose = function(e) {
+                console.log('Home WebSocket disconnected');
+                socketConnected = false;
+                if (window.wsInterval) {
+                    clearInterval(window.wsInterval);
+                    window.wsInterval = null;
+                }
+                startFallbackPolling(); // Start fallback polling
+                
+                // Attempt to reconnect after 5 seconds
+                setTimeout(connectWebSocket, 5000);
+            };
+            
+            socket.onerror = function(e) {
+                console.error('Home WebSocket error:', e);
+                socketConnected = false;
+                startFallbackPolling(); // Start fallback on error
+            };
+        } catch (error) {
+            console.error('Failed to create WebSocket:', error);
+            socketConnected = false;
+            startFallbackPolling();
+        }
+    }
+    
+    // Try to connect WebSocket, fallback to API polling if it fails
+    connectWebSocket();
+
+    
+    function updateOnlineStatus(onlineUsers) {
+        // Update online status for all users
+        document.querySelectorAll('[data-user-id]').forEach(userElement => {
+            const userId = parseInt(userElement.getAttribute('data-user-id'));
+            const statusElement = userElement.querySelector('.user-status');
+            
+            if (onlineUsers.includes(userId)) {
+                statusElement.innerHTML = '<span class="text-xs text-green-600">● Online</span>';
+                userElement.classList.add('online-user');
+            } else {
+                statusElement.innerHTML = '<span class="text-xs text-gray-400">○ Offline</span>';
+                userElement.classList.remove('online-user');
+            }
+        });
+        
+        // Update online count
+        const onlineCountElement = document.getElementById('online-count');
+        if (onlineCountElement) {
+            onlineCountElement.textContent = onlineUsers.length;
+        }
+    }
+    
+    // Fallback function to update online status via API if WebSocket fails
+    async function updateOnlineStatusFallback() {
+        try {
+            const response = await fetch('/api/online-users/', {
+                method: 'GET',
+                headers: {
+                    'X-CSRFToken': getCookie('csrftoken'),
+                }
+            });
+            
+            if (response.ok) {
+                const data = await response.json();
+                updateOnlineStatus(data.online_user_ids);
+            }
+        } catch (error) {
+            console.error('Error updating online status:', error);
+        }
+    }
+    
+    // Send heartbeat to server to maintain online status
+    async function sendHeartbeat() {
+        try {
+            await fetch('/api/update-activity/', {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': getCookie('csrftoken'),
+                }
+            });
+        } catch (error) {
+            console.error('Error sending heartbeat:', error);
+        }
+    }
+    
+    // Get CSRF cookie
+    function getCookie(name) {
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== '') {
+            const cookies = document.cookie.split(';');
+            for (let i = 0; i < cookies.length; i++) {
+                const cookie = cookies[i].trim();
+                if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                    break;
+                }
+            }
+        }
+        return cookieValue;
+    }
+    
+    // Set up periodic updates and heartbeats
+    let fallbackInterval;
+    let heartbeatInterval;
+    
+    // Start fallback polling every 15 seconds if WebSocket fails
+    function startFallbackPolling() {
+        if (!fallbackInterval) {
+            // Update immediately, then every 15 seconds
+            updateOnlineStatusFallback();
+            fallbackInterval = setInterval(updateOnlineStatusFallback, 15000);
+            console.log('Started fallback polling for online status (every 15s)');
+        }
+    }
+    
+    // Stop fallback polling when WebSocket is working
+    function stopFallbackPolling() {
+        if (fallbackInterval) {
+            clearInterval(fallbackInterval);
+            fallbackInterval = null;
+            console.log('Stopped fallback polling');
+        }
+    }
+    
+    // Start heartbeat every 2 minutes to maintain online status
+    heartbeatInterval = setInterval(sendHeartbeat, 120000);
+    
+    // Send initial heartbeat
+    sendHeartbeat();
+    
+    // Start fallback polling immediately as backup (will be stopped if WebSocket connects)
+    setTimeout(function() {
+        if (!socketConnected) {
+            console.log('WebSocket failed to connect, using fallback polling');
+            startFallbackPolling();
+        }
+    }, 2000);
+});
+{% endblock %}

@@ -1,0 +1,176 @@
+{% extends 'base.html' %}
+
+{% block title %}My Wallet{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="row">
+        <div class="col-md-8 offset-md-2">
+            <div class="card">
+                <div class="card-header bg-primary text-white">
+                    <h4><i class="fas fa-wallet me-2"></i>My Wallet</h4>
+                </div>
+                <div class="card-body">
+                    {% if error %}
+                        <div class="alert alert-danger">
+                            <i class="fas fa-exclamation-triangle me-2"></i>{{ error }}
+                        </div>
+                    {% else %}
+                        <div class="row mb-4">
+                            <div class="col-md-6">
+                                <div class="card bg-success text-white">
+                                    <div class="card-body text-center">
+                                        <h2 class="card-title">
+                                            <i class="fas fa-coins me-2"></i>Current Balance
+                                        </h2>
+                                        <h1 class="display-4" id="balance-amount">
+                                            {{ wallet.balance|floatformat:0 }} đồng
+                                        </h1>
+                                        <small>Last updated: {{ wallet.updated_at|date:"M d, Y H:i" }}</small>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="card bg-info text-white">
+                                    <div class="card-body text-center">
+                                        <h4><i class="fas fa-gamepad me-2"></i>Caro Game Info</h4>
+                                        <p class="mb-1"><strong>Entry Fee:</strong> 10,000 đồng</p>
+                                        <p class="mb-1"><strong>Winner Prize:</strong> 18,000 đồng (90%)</p>
+                                        <p class="mb-0"><strong>House Fee:</strong> 2,000 đồng (10%)</p>
+                                        {% if wallet.balance >= 10000 %}
+                                            <span class="badge bg-success mt-2">
+                                                <i class="fas fa-check-circle"></i> Ready to Play
+                                            </span>
+                                        {% else %}
+                                            <span class="badge bg-danger mt-2">
+                                                <i class="fas fa-times-circle"></i> Insufficient Funds
+                                            </span>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="card">
+                            <div class="card-header">
+                                <h5><i class="fas fa-history me-2"></i>Recent Transactions</h5>
+                            </div>
+                            <div class="card-body">
+                                {% if recent_transactions %}
+                                    <div class="table-responsive">
+                                        <table class="table table-striped">
+                                            <thead>
+                                                <tr>
+                                                    <th>Date & Time</th>
+                                                    <th>Type</th>
+                                                    <th>Amount</th>
+                                                    <th>Balance After</th>
+                                                    <th>Description</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {% for transaction in recent_transactions %}
+                                                    <tr>
+                                                        <td>{{ transaction.created_at|date:"M d, Y H:i:s" }}</td>
+                                                        <td>
+                                                            {% if transaction.transaction_type == 'caro_bet' %}
+                                                                <span class="badge bg-warning">
+                                                                    <i class="fas fa-minus-circle"></i> Bet
+                                                                </span>
+                                                            {% elif transaction.transaction_type == 'caro_win' %}
+                                                                <span class="badge bg-success">
+                                                                    <i class="fas fa-trophy"></i> Win
+                                                                </span>
+                                                            {% elif transaction.transaction_type == 'caro_refund' %}
+                                                                <span class="badge bg-info">
+                                                                    <i class="fas fa-undo"></i> Refund
+                                                                </span>
+                                                            {% elif transaction.transaction_type == 'initial' %}
+                                                                <span class="badge bg-primary">
+                                                                    <i class="fas fa-gift"></i> Welcome Bonus
+                                                                </span>
+                                                            {% else %}
+                                                                <span class="badge bg-secondary">{{ transaction.transaction_type|title }}</span>
+                                                            {% endif %}
+                                                        </td>
+                                                        <td>
+                                                            {% if transaction.transaction_type == 'caro_bet' %}
+                                                                <span class="text-danger">-{{ transaction.amount|floatformat:0 }} đồng</span>
+                                                            {% else %}
+                                                                <span class="text-success">+{{ transaction.amount|floatformat:0 }} đồng</span>
+                                                            {% endif %}
+                                                        </td>
+                                                        <td>{{ transaction.balance_after|floatformat:0 }} đồng</td>
+                                                        <td>{{ transaction.description }}</td>
+                                                    </tr>
+                                                {% endfor %}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                {% else %}
+                                    <div class="text-center text-muted py-4">
+                                        <i class="fas fa-receipt fa-3x mb-3"></i>
+                                        <p>No transactions yet. Start playing Caro games to see your transaction history!</p>
+                                    </div>
+                                {% endif %}
+                            </div>
+                        </div>
+                    {% endif %}
+                </div>
+                <div class="card-footer text-center">
+                    <a href="{% url 'chat:home' %}" class="btn btn-primary">
+                        <i class="fas fa-home me-2"></i>Back to Home
+                    </a>
+                    <button class="btn btn-success" onclick="refreshBalance()">
+                        <i class="fas fa-sync-alt me-2"></i>Refresh Balance
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function refreshBalance() {
+    fetch('{% url "user_wallet:wallet_balance_api" %}')
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                document.getElementById('balance-amount').textContent = data.formatted_balance;
+                // Show success message
+                showNotification('Balance refreshed successfully!', 'success');
+            } else {
+                showNotification('Failed to refresh balance', 'error');
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            showNotification('Failed to refresh balance', 'error');
+        });
+}
+
+function showNotification(message, type) {
+    const alertClass = type === 'success' ? 'alert-success' : 'alert-danger';
+    const icon = type === 'success' ? 'check-circle' : 'exclamation-triangle';
+    
+    const notification = `
+        <div class="alert ${alertClass} alert-dismissible fade show" role="alert">
+            <i class="fas fa-${icon} me-2"></i>${message}
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    `;
+    
+    // Insert notification at the top of the container
+    const container = document.querySelector('.container');
+    container.insertAdjacentHTML('afterbegin', notification);
+    
+    // Auto remove after 3 seconds
+    setTimeout(() => {
+        const alert = container.querySelector('.alert');
+        if (alert) {
+            alert.remove();
+        }
+    }, 3000);
+}
+</script>
+{% endblock %}

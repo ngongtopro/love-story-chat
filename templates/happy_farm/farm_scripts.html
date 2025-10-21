@@ -1,0 +1,654 @@
+<script>
+let selectedPlotId = null;
+let selectedCropId = null;
+let autoRefreshInterval = null;
+let confirmAction = null;
+
+// Initialize farm
+document.addEventListener('DOMContentLoaded', function() {
+    // Request notification permission
+    requestNotificationPermission();
+    
+    // Update timer displays immediately and every second for real-time countdown
+    updateTimeRemainingDisplays();
+    setInterval(updateTimeRemainingDisplays, 1000); // Update every second
+    
+    // Auto-refresh farm data every 2 minutes to sync with server
+    setInterval(autoRefreshFarmData, 120000); // Auto refresh every 2 minutes
+    
+    // Add click handlers for plots
+    document.querySelectorAll('.farm-plot').forEach(plot => {
+        plot.addEventListener('click', handlePlotClick);
+    });
+    
+    // Add click handlers for crops
+    document.querySelectorAll('.crop-option').forEach(crop => {
+        crop.addEventListener('click', function() {
+            // Remove previous selection
+            document.querySelectorAll('.crop-option').forEach(c => c.classList.remove('selected'));
+            // Add selection to current crop
+            this.classList.add('selected');
+            selectedCropId = this.dataset.cropId;
+            showNotification(`Selected ${this.dataset.cropName} 🌱`, 'info');
+        });
+    });
+});
+
+function handlePlotClick(event) {
+    const plot = event.currentTarget;
+    const plotId = plot.dataset.plotId;
+    const state = plot.dataset.state;
+    
+    if (state === 'empty') {
+        // Show planting modal
+        selectedPlotId = plotId;
+        showPlantModal(plot.dataset.plotNumber);
+    } else if (state === 'ready') {
+        // Harvest crop
+        harvestCrop(plotId);
+    } else if (state === 'withered') {
+        // Clear plot
+        clearPlot(plotId);
+    }
+}
+
+function showPlantModal(plotNumber) {
+    const modal = document.getElementById('plantModal');
+    const content = document.getElementById('plantModalContent');
+    
+    if (!selectedCropId) {
+        content.innerHTML = '<p class="text-red-500">Please select a crop from the shop first!</p>';
+        modal.classList.remove('hidden');
+        return;
+    }
+    
+    const cropOption = document.querySelector(`[data-crop-id="${selectedCropId}"]`);
+    const cropName = cropOption.dataset.cropName;
+    const cropEmoji = cropOption.dataset.cropEmoji;
+    const seedPrice = parseInt(cropOption.dataset.seedPrice);
+    const growthTime = cropOption.dataset.growthTime;
+    const energyCost = cropOption.dataset.energyCost;
+    
+    content.innerHTML = `
+        <div class="text-center">
+            <div class="text-4xl mb-2">${cropEmoji}</div>
+            <h4 class="text-lg font-bold mb-2">Plant ${cropName}</h4>
+            <div class="text-sm text-gray-600 space-y-1">
+                <div>Plot: #${parseInt(plotNumber) + 1}</div>
+                <div>💰 Cost: ${seedPrice} coins</div>
+                <div>⏱️ Growth Time: ${growthTime} minutes</div>
+                <div>⚡ Energy Cost: ${energyCost}</div>
+            </div>
+        </div>
+    `;
+    
+    modal.classList.remove('hidden');
+}
+
+function closePlantModal() {
+    document.getElementById('plantModal').classList.add('hidden');
+    selectedPlotId = null;
+}
+
+function confirmPlant() {
+    if (!selectedPlotId || !selectedCropId) return;
+    
+    fetch('{% url "plant_crop_api" %}', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': getCookie('csrftoken')
+        },
+        body: JSON.stringify({
+            plot_id: selectedPlotId,
+            crop_type_id: selectedCropId
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            updateFarmStats(data.farm);
+            updateMoneyDisplay(data.wallet_balance);
+            updatePlotDisplay(selectedPlotId, data.plot);
+            showNotification(data.message, 'success');
+            closePlantModal();
+        } else {
+            showNotification(data.error, 'error');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        showNotification('Failed to plant crop', 'error');
+    });
+}
+
+function harvestCrop(plotId) {
+    fetch('{% url "harvest_crop_api" %}', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': getCookie('csrftoken')
+        },
+        body: JSON.stringify({
+            plot_id: plotId
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            showNotification(data.message, 'success');
+            updatePlotDisplay(plotId, data.plot);
+            updateFarmStats(data.farm);
+            updateMoneyDisplay(data.wallet_balance);
+            playNotificationSound();
+        } else {
+            showNotification(data.error, 'error');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        showNotification('Failed to harvest crop', 'error');
+    });
+}
+
+function clearPlot(plotId) {
+    showConfirmModal(
+        'Clear Withered Plot',
+        'Are you sure you want to clear this withered plot?',
+        () => {
+            fetch('{% url "happy_farm:clear_plot_api" %}', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': getCookie('csrftoken')
+                },
+                body: JSON.stringify({
+                    plot_id: plotId
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    showNotification(data.message, 'success');
+                    updatePlotDisplay(plotId, data.plot);
+                } else {
+                    showNotification(data.error, 'error');
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                showNotification('Failed to clear plot', 'error');
+            });
+        }
+    );
+}
+
+function refreshFarmStatus() {
+    console.log('🔄 Refreshing farm status manually...');
+    const refreshIcon = document.getElementById('refresh-icon');
+    refreshIcon.classList.add('fa-spin');
+    
+    fetch('{% url "farm_status_api" %}')
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            updateFarmStats(data.farm);
+            updateMoneyDisplay(data.wallet_balance);
+            
+            // Update all plots
+            data.plots.forEach(plot => {
+                updatePlotDisplay(plot.id, plot);
+            });
+            
+            updateLastRefreshTime();
+            showNotification('🔄 Farm status refreshed!', 'success');
+        } else {
+            showNotification('❌ Failed to refresh farm status', 'error');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        showNotification('❌ Failed to refresh farm status', 'error');
+        updateConnectionStatus(false);
+    })
+    .finally(() => {
+        refreshIcon.classList.remove('fa-spin');
+    });
+}
+
+function autoRefreshFarmData() {
+    console.log('🔄 Auto-refreshing farm data (scheduled)...');
+    fetch('{% url "farm_status_api" %}')
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            updateFarmStats(data.farm);
+            updateMoneyDisplay(data.wallet_balance);
+            
+            // Update all plots quietly
+            data.plots.forEach(plot => {
+                updatePlotDisplay(plot.id, plot);
+            });
+            
+            updateLastRefreshTime();
+            updateConnectionStatus(true);
+            console.log('✅ Farm data auto-refreshed successfully');
+            
+            // Show subtle notification only if there were changes
+            const hasReadyCrops = data.plots.some(plot => plot.state === 'ready');
+            const hasWitheredCrops = data.plots.some(plot => plot.state === 'withered');
+            
+            if (hasReadyCrops) {
+                showNotification('🌾 Some crops are ready to harvest!', 'success');
+                sendBrowserNotification('Farm Update', 'Some crops are ready to harvest!', '🌾');
+            } else if (hasWitheredCrops) {
+                showNotification('💀 Some crops have withered!', 'warning');
+                sendBrowserNotification('Farm Alert', 'Some crops have withered!', '💀');
+            }
+        } else {
+            console.warn('⚠️ Auto-refresh failed:', data.error);
+            updateConnectionStatus(false);
+        }
+    })
+    .catch(error => {
+        console.error('❌ Auto-refresh error:', error);
+        updateConnectionStatus(false);
+    });
+}
+
+// Bulk Actions
+function harvestAllReady() {
+    const readyPlots = document.querySelectorAll('.farm-plot[data-state="ready"]');
+    if (readyPlots.length === 0) {
+        showNotification('No crops ready to harvest', 'info');
+        return;
+    }
+    
+    showConfirmModal(
+        'Harvest All Ready Crops',
+        `Harvest ${readyPlots.length} ready crop(s)?`,
+        () => {
+            readyPlots.forEach(plot => {
+                harvestCrop(plot.dataset.plotId);
+            });
+        }
+    );
+}
+
+function clearAllWithered() {
+    const witheredPlots = document.querySelectorAll('.farm-plot[data-state="withered"]');
+    if (witheredPlots.length === 0) {
+        showNotification('No withered crops to clear', 'info');
+        return;
+    }
+    
+    showConfirmModal(
+        'Clear All Withered Crops',
+        `Clear ${witheredPlots.length} withered crop(s)?`,
+        () => {
+            witheredPlots.forEach(plot => {
+                clearPlot(plot.dataset.plotId);
+            });
+        }
+    );
+}
+
+function toggleAutoRefresh() {
+    const btn = document.getElementById('auto-refresh-btn');
+    const icon = btn.querySelector('i');
+    const span = btn.querySelector('span');
+    
+    if (autoRefreshInterval) {
+        // Stop auto refresh
+        clearInterval(autoRefreshInterval);
+        autoRefreshInterval = null;
+        icon.className = 'fas fa-play';
+        span.textContent = 'Auto Refresh';
+        btn.className = btn.className.replace('bg-red-600 hover:bg-red-700', 'bg-purple-600 hover:bg-purple-700');
+        showNotification('Auto refresh disabled', 'info');
+    } else {
+        // Start auto refresh
+        autoRefreshInterval = setInterval(autoRefreshFarmData, 30000); // Every 30 seconds
+        icon.className = 'fas fa-stop';
+        span.textContent = 'Stop Auto';
+        btn.className = btn.className.replace('bg-purple-600 hover:bg-purple-700', 'bg-red-600 hover:bg-red-700');
+        showNotification('Auto refresh enabled (30s)', 'success');
+    }
+}
+
+// UI Update Functions
+function updatePlotDisplay(plotId, plotData) {
+    const plot = document.querySelector(`[data-plot-id="${plotId}"]`);
+    if (!plot) return;
+    
+    plot.dataset.state = plotData.state;
+    
+    let content = '';
+    if (plotData.state === 'empty') {
+        content = `
+            <div class="text-center text-gray-400">
+                <div class="text-2xl mb-1">🌱</div>
+                <div class="text-xs font-medium">Empty</div>
+                <div class="text-xs">Click to plant</div>
+            </div>
+        `;
+    } else if (plotData.state === 'planted') {
+        content = `
+            <div class="text-center">
+                <div class="text-2xl mb-1">${plotData.crop_type.emoji}</div>
+                <div class="text-xs font-medium">${plotData.crop_type.name}</div>
+                <div class="time-remaining" 
+                     data-ready-at="${plotData.ready_at}"
+                     data-planted-at="${plotData.planted_at}">
+                    Growing...
+                </div>
+                <div class="w-full bg-gray-200 rounded-full h-1.5 mt-1">
+                    <div class="progress-bar bg-blue-500 h-1.5 rounded-full" 
+                         data-planted-at="${plotData.planted_at}"
+                         data-ready-at="${plotData.ready_at}"></div>
+                </div>
+            </div>
+        `;
+    } else if (plotData.state === 'ready') {
+        content = `
+            <div class="text-center animate-pulse">
+                <div class="text-3xl mb-1">${plotData.crop_type.emoji}</div>
+                <div class="text-xs font-bold text-green-700">Ready!</div>
+                <div class="text-xs text-green-600">Click to harvest</div>
+                <div class="time-remaining text-red-600" 
+                     data-withers-at="${plotData.withers_at}">
+                    Withers soon!
+                </div>
+            </div>
+        `;
+    } else if (plotData.state === 'withered') {
+        content = `
+            <div class="text-center">
+                <div class="text-2xl mb-1">💀</div>
+                <div class="text-xs font-medium text-red-600">Withered</div>
+                <div class="text-xs text-red-500">Click to clear</div>
+            </div>
+        `;
+    }
+    
+    plot.innerHTML = content + `<div class="absolute top-1 left-1 text-xs text-gray-500">${parseInt(plot.dataset.plotNumber) + 1}</div>`;
+}
+
+function updateFarmStats(farmData) {
+    document.getElementById('energy-display').textContent = farmData.energy;
+}
+
+function updateMoneyDisplay(balance) {
+    document.getElementById('money-display').textContent = balance.toLocaleString();
+}
+
+function updateTimeRemainingDisplays() {
+    let needsServerRefresh = false;
+    
+    document.querySelectorAll('.time-remaining').forEach(element => {
+        const readyAt = element.dataset.readyAt;
+        const withersAt = element.dataset.withersAt;
+        if (!readyAt) return;
+        
+        const now = new Date();
+        const ready = new Date(readyAt);
+        const withers = withersAt ? new Date(withersAt) : null;
+        const diff = ready - now;
+        const withersDiff = withers ? withers - now : null;
+        
+        if (diff <= 0) {
+            // Crop is ready
+            if (withersDiff && withersDiff <= 0) {
+                element.textContent = 'Withered!';
+                element.className = 'time-remaining text-red-600 font-bold';
+                needsServerRefresh = true;
+            } else if (withersDiff) {
+                const withersIn = Math.floor(withersDiff / 1000);
+                const withersMinutes = Math.floor(withersIn / 60);
+                const withersSeconds = withersIn % 60;
+                element.textContent = `Withers in ${withersMinutes}:${withersSeconds.toString().padStart(2, '0')}`;
+                element.className = 'time-remaining text-red-600';
+            } else {
+                element.textContent = 'Ready!';
+                element.className = 'time-remaining text-green-600 font-bold animate-pulse';
+            }
+        } else {
+            // Crop is still growing
+            const totalSeconds = Math.floor(diff / 1000);
+            const hours = Math.floor(totalSeconds / 3600);
+            const minutes = Math.floor((totalSeconds % 3600) / 60);
+            const seconds = totalSeconds % 60;
+            
+            if (hours > 0) {
+                element.textContent = `${hours}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+                element.classList.remove('countdown-urgent');
+            } else if (minutes > 5) {
+                element.textContent = `${minutes}:${seconds.toString().padStart(2, '0')}`;
+                element.classList.remove('countdown-urgent');
+            } else if (minutes > 0) {
+                element.textContent = `${minutes}:${seconds.toString().padStart(2, '0')}`;
+                element.classList.add('countdown-urgent');
+            } else {
+                element.textContent = `${seconds}s`;
+                element.classList.add('countdown-urgent');
+            }
+        }
+    });
+    
+    // Update progress bars
+    updateProgressBars();
+    
+    // Auto-refresh if any crops changed state
+    if (needsServerRefresh) {
+        setTimeout(() => {
+            console.log('🔄 Auto-refreshing farm data due to state changes...');
+            refreshFarmStatus();
+        }, 1000); // Delay 1 second to avoid spam
+    }
+}
+
+function updateProgressBars() {
+    document.querySelectorAll('.progress-bar').forEach(bar => {
+        const plantedAt = bar.dataset.plantedAt;
+        const readyAt = bar.dataset.readyAt;
+        
+        if (!plantedAt || !readyAt) return;
+        
+        const now = new Date();
+        const planted = new Date(plantedAt);
+        const ready = new Date(readyAt);
+        
+        const totalTime = ready - planted;
+        const elapsedTime = now - planted;
+        const progress = Math.min(Math.max((elapsedTime / totalTime) * 100, 0), 100);
+        
+        bar.style.width = `${progress}%`;
+        
+        // Change color based on progress
+        if (progress < 30) {
+            bar.className = 'bg-red-500 h-1.5 rounded-full progress-bar';
+        } else if (progress < 70) {
+            bar.className = 'bg-yellow-500 h-1.5 rounded-full progress-bar';
+        } else if (progress < 100) {
+            bar.className = 'bg-blue-500 h-1.5 rounded-full progress-bar';
+        } else {
+            bar.className = 'bg-green-500 h-1.5 rounded-full progress-bar animate-pulse';
+        }
+    });
+}
+
+// Modal Functions
+function showConfirmModal(title, message, action) {
+    document.getElementById('confirmTitle').textContent = title;
+    document.getElementById('confirmMessage').textContent = message;
+    confirmAction = action;
+    document.getElementById('confirmModal').classList.remove('hidden');
+}
+
+function closeConfirmModal() {
+    document.getElementById('confirmModal').classList.add('hidden');
+    confirmAction = null;
+}
+
+function executeConfirmAction() {
+    if (confirmAction) {
+        confirmAction();
+        closeConfirmModal();
+    }
+}
+
+// Notification Functions
+function showNotification(message, type = 'info') {
+    const container = document.getElementById('notification-container');
+    const notification = document.createElement('div');
+    
+    let bgClass, iconClass;
+    switch (type) {
+        case 'success':
+            bgClass = 'bg-green-500 text-white';
+            iconClass = 'fas fa-check-circle';
+            break;
+        case 'error':
+            bgClass = 'bg-red-500 text-white';
+            iconClass = 'fas fa-exclamation-triangle';
+            break;
+        case 'warning':
+            bgClass = 'bg-yellow-500 text-white';
+            iconClass = 'fas fa-exclamation-circle';
+            break;
+        default:
+            bgClass = 'bg-blue-500 text-white';
+            iconClass = 'fas fa-info-circle';
+    }
+    
+    notification.className = `${bgClass} px-4 py-3 rounded-lg shadow-lg flex items-center space-x-2 transform translate-x-full transition-transform duration-300`;
+    notification.innerHTML = `
+        <i class="${iconClass}"></i>
+        <span>${message}</span>
+        <button onclick="this.parentElement.remove()" class="ml-2 text-lg font-bold">&times;</button>
+    `;
+    
+    container.appendChild(notification);
+    
+    // Animate in
+    setTimeout(() => {
+        notification.classList.remove('translate-x-full');
+    }, 100);
+    
+    // Auto remove after 5 seconds
+    setTimeout(() => {
+        if (notification.parentElement) {
+            notification.classList.add('translate-x-full');
+            setTimeout(() => notification.remove(), 300);
+        }
+    }, 5000);
+}
+
+function updateLastRefreshTime() {
+    const now = new Date();
+    const timeString = now.toLocaleTimeString('vi-VN', { 
+        hour: '2-digit', 
+        minute: '2-digit', 
+        second: '2-digit' 
+    });
+    document.getElementById('last-refresh').textContent = `Last refresh: ${timeString}`;
+}
+
+function updateConnectionStatus(isConnected) {
+    const statusElement = document.getElementById('connection-status');
+    const dot = statusElement.querySelector('div');
+    const text = statusElement.querySelector('span');
+    
+    if (isConnected) {
+        dot.className = 'w-2 h-2 bg-green-500 rounded-full mr-1 animate-pulse';
+        text.textContent = 'Live updates active';
+    } else {
+        dot.className = 'w-2 h-2 bg-red-500 rounded-full mr-1';
+        text.textContent = 'Connection issues';
+    }
+}
+
+function playNotificationSound() {
+    try {
+        // Create a simple beep sound using Web Audio API
+        const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        const oscillator = audioContext.createOscillator();
+        const gainNode = audioContext.createGain();
+        
+        oscillator.connect(gainNode);
+        gainNode.connect(audioContext.destination);
+        
+        oscillator.frequency.setValueAtTime(800, audioContext.currentTime); // 800Hz frequency
+        oscillator.type = 'sine';
+        
+        gainNode.gain.setValueAtTime(0, audioContext.currentTime);
+        gainNode.gain.linearRampToValueAtTime(0.3, audioContext.currentTime + 0.01);
+        gainNode.gain.exponentialRampToValueAtTime(0.001, audioContext.currentTime + 0.5);
+        
+        oscillator.start(audioContext.currentTime);
+        oscillator.stop(audioContext.currentTime + 0.5);
+        
+        console.log('🔔 Notification sound played');
+    } catch (error) {
+        console.log('🔕 Could not play notification sound:', error);
+    }
+}
+
+function requestNotificationPermission() {
+    if ('Notification' in window) {
+        if (Notification.permission === 'default') {
+            Notification.requestPermission().then(permission => {
+                console.log('🔔 Notification permission:', permission);
+                updateNotificationStatus(permission);
+            });
+        } else {
+            updateNotificationStatus(Notification.permission);
+        }
+    }
+}
+
+function updateNotificationStatus(permission) {
+    const statusElement = document.getElementById('notification-status');
+    if (permission === 'granted') {
+        statusElement.textContent = 'Browser notifications enabled';
+    } else if (permission === 'denied') {
+        statusElement.textContent = 'Browser notifications disabled';
+    } else {
+        statusElement.textContent = 'Browser notifications not configured';
+    }
+}
+
+function sendBrowserNotification(title, message, icon = '🌾') {
+    if ('Notification' in window && Notification.permission === 'granted') {
+        try {
+            new Notification(title, {
+                body: message,
+                icon: '/static/images/farm-icon.png', // You can add a farm icon
+                badge: '/static/images/farm-badge.png',
+                tag: 'farm-notification',
+                renotify: true,
+                requireInteraction: false,
+                silent: false
+            });
+            console.log('📱 Browser notification sent:', title);
+        } catch (error) {
+            console.log('📵 Browser notification failed:', error);
+        }
+    }
+}
+
+function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
+}
+</script>

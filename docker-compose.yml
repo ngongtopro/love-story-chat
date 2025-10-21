@@ -1,0 +1,92 @@
+services:
+  # Redis Cache & Channel Layer
+  redis:
+    image: redis:7-alpine
+    container_name: love_chat_redis
+    restart: unless-stopped
+    command: redis-server --appendonly yes --requirepass ${REDIS_PASSWORD:-redis_secure_pass}
+    volumes:
+      - redis_data:/data
+    ports:
+      - "6379:6379"
+    networks:
+      - love_chat_network
+    healthcheck:
+      test: ["CMD", "redis-cli", "--raw", "incr", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Main Django Application
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile.production
+    container_name: love_chat_web
+    restart: unless-stopped
+    volumes:
+      - static_volume:/app/staticfiles
+      - media_volume:/app/media
+      - logs_volume:/app/logs
+    ports:
+      - "80:80"
+      - "8000:8000"
+    environment:
+      - DJANGO_SETTINGS_MODULE=love_chat.settings_production
+      - DB_NAME=${DB_NAME:-love_chat}
+      - DB_USER=${DB_USER:-love_chat_user}
+      - DB_PASSWORD=${DB_PASSWORD:-love_chat_secure_pass}
+      - DB_HOST=${DB_HOST:-host.docker.internal}
+      - DB_PORT=${DB_PORT:-5432}
+      - REDIS_URL=redis://:${REDIS_PASSWORD:-redis_secure_pass}@redis:6379/0
+      - SECRET_KEY=${SECRET_KEY:-your-super-secret-key-change-in-production}
+      - DEBUG=False
+    depends_on:
+      redis:
+        condition: service_healthy
+    networks:
+      - love_chat_network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Background Worker (Optional)
+  worker:
+    build:
+      context: .
+      dockerfile: Dockerfile.production
+    container_name: love_chat_worker
+    restart: unless-stopped
+    command: python manage.py runworker
+    volumes:
+      - logs_volume:/app/logs
+    environment:
+      - DJANGO_SETTINGS_MODULE=love_chat.settings_production
+      - DB_NAME=${DB_NAME:-love_chat}
+      - DB_USER=${DB_USER:-love_chat_user}
+      - DB_PASSWORD=${DB_PASSWORD:-love_chat_secure_pass}
+      - DB_HOST=${DB_HOST:-host.docker.internal}
+      - DB_PORT=${DB_PORT:-5432}
+      - REDIS_URL=redis://:${REDIS_PASSWORD:-redis_secure_pass}@redis:6379/0
+      - SECRET_KEY=${SECRET_KEY:-your-super-secret-key-change-in-production}
+    depends_on:
+      - redis
+      - web
+    networks:
+      - love_chat_network
+
+volumes:
+  redis_data:
+    driver: local
+  static_volume:
+    driver: local
+  media_volume:
+    driver: local
+  logs_volume:
+    driver: local
+
+networks:
+  love_chat_network:
+    driver: bridge

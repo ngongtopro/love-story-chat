@@ -1,0 +1,58 @@
+<div class="lg:col-span-1">
+    <div class="bg-white rounded-lg shadow-sm border p-4 sm:p-6">
+        <div class="flex items-center justify-between mb-4">
+            <h2 class="text-lg sm:text-xl font-bold text-gray-800 flex items-center">
+                🌾 Farm Stats
+            </h2>
+            <div class="connection-indicator" id="connection-status">
+                <div class="w-2 h-2 bg-green-500 rounded-full mr-1 animate-pulse"></div>
+                <span>Live updates active</span>
+            </div>
+        </div>
+        
+        <div class="space-y-4">
+            <!-- Energy -->
+            <div class="flex items-center justify-between p-3 bg-blue-50 rounded-lg">
+                <div class="flex items-center space-x-2">
+                    <span class="text-blue-600 text-xl">⚡</span>
+                    <span class="font-medium text-gray-700">Energy</span>
+                </div>
+                <span class="font-bold text-blue-600" id="energy-display">{{ farm.energy|default:100 }}</span>
+            </div>
+            
+            <!-- Money -->
+            <div class="flex items-center justify-between p-3 bg-green-50 rounded-lg">
+                <div class="flex items-center space-x-2">
+                    <span class="text-green-600 text-xl">💰</span>
+                    <span class="font-medium text-gray-700">Money</span>
+                </div>
+                <span class="font-bold text-green-600" id="money-display">{{ wallet.balance|default:0|floatformat:0 }}</span>
+            </div>
+            
+            <!-- Experience -->
+            <div class="flex items-center justify-between p-3 bg-yellow-50 rounded-lg">
+                <div class="flex items-center space-x-2">
+                    <span class="text-yellow-600 text-xl">⭐</span>
+                    <span class="font-medium text-gray-700">Experience</span>
+                </div>
+                <span class="font-bold text-yellow-600">{{ farm.experience|default:0 }}</span>
+            </div>
+            
+            <!-- Level -->
+            <div class="flex items-center justify-between p-3 bg-purple-50 rounded-lg">
+                <div class="flex items-center space-x-2">
+                    <span class="text-purple-600 text-xl">🏆</span>
+                    <span class="font-medium text-gray-700">Level</span>
+                </div>
+                <span class="font-bold text-purple-600">{{ farm.level|default:1 }}</span>
+            </div>
+        </div>
+        
+        <!-- Last Refresh Time -->
+        <div class="mt-4 pt-4 border-t border-gray-200">
+            <p class="text-xs text-gray-500" id="last-refresh">
+                Last refresh: {{ now|date:"H:i:s" }}
+            </p>
+        </div>
+    </div>
+</div>
