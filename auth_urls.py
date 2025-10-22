@@ -14,5 +14,6 @@ jwt_urlpatterns = [
 ]
 
 urlpatterns = [
+    path('api/auth/', include('authentication.urls')),
     path('api/auth/', include(jwt_urlpatterns)),
 ]
