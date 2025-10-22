@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import { useState, useEffect } from 'react'
 import {
   Card,
   Row,
@@ -19,16 +19,39 @@ import {
   PlayCircleOutlined,
   CalendarOutlined
 } from '@ant-design/icons'
-import { chatAPI, caroAPI } from '../services/api'
+import { chatAPI, caroAPI } from '../../services/api'
 import dayjs from 'dayjs'
 
 const { Title, Text } = Typography
 
-const Profile = () => {
+interface User {
+  username: string
+}
+
+interface MessageStats {
+  total_chats: number
+  total_messages: number
+}
+
+interface GameStats {
+  games_won?: number
+  total_games?: number
+  win_rate?: number
+}
+
+interface ProfileData {
+  user: User | null
+  messageStats: MessageStats
+  gameStats: GameStats
+  recentMessages: any[]
+  recentGames: any[]
+}
+
+export default function ProfilePage() {
   const [loading, setLoading] = useState(true)
-  const [profileData, setProfileData] = useState({
+  const [profileData, setProfileData] = useState<ProfileData>({
     user: null,
-    messageStats: {},
+    messageStats: { total_chats: 0, total_messages: 0 },
     gameStats: {},
     recentMessages: [],
     recentGames: []
@@ -59,7 +82,7 @@ const Profile = () => {
       setProfileData({
         user: { username: 'Current User' }, // Placeholder
         messageStats: {
-          total_chats: chatsRes.data.length,
+          total_chats: Array.isArray(chatsRes.data) ? chatsRes.data.length : 0,
           total_messages: 0 // Would need to count from API
         },
         gameStats,
@@ -257,5 +280,3 @@ const Profile = () => {
     </div>
   )
 }
-
-export default Profile

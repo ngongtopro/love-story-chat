@@ -1,24 +1,9 @@
-import React, { useState } from 'react'
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom'
-import { Layout } from 'antd'
-import Navbar from './components/Navbar'
-import Sidebar from './components/Sidebar'
-import LandingPage from './pages/LandingPage'
-import Login from './pages/Login'
-import Register from './pages/Register'
-import Home from './pages/Home'
-import Chat from './pages/Chat'
-import Profile from './pages/Profile'
-import CaroGame from './pages/CaroGame'
-import Farm from './pages/Farm'
-import Wallet from './pages/Wallet'
+import { BrowserRouter as Router } from 'react-router-dom'
 import { AuthProvider, useAuth } from './context/AuthContext'
-
-const { Content } = Layout
+import AppRoutes from './app/routes'
 
 function AppContent() {
   const { user, loading } = useAuth()
-  const [collapsed, setCollapsed] = useState(false)
 
   if (loading) {
     return (
@@ -26,48 +11,17 @@ function AppContent() {
         display: 'flex', 
         justifyContent: 'center', 
         alignItems: 'center', 
-        height: '100vh' 
+        height: '100vh',
+        flexDirection: 'column'
       }}>
-        <div>Đang tải...</div>
+        <div style={{ fontSize: 18, color: '#1890ff' }}>Đang tải...</div>
       </div>
-    )
-  }
-
-  if (!user) {
-    return (
-      <Router>
-        <Routes>
-          <Route path="/" element={<LandingPage />} />
-          <Route path="/landing" element={<LandingPage />} />
-          <Route path="/login" element={<Login />} />
-          <Route path="/register" element={<Register />} />
-          <Route path="*" element={<Navigate to="/" replace />} />
-        </Routes>
-      </Router>
     )
   }
 
   return (
     <Router>
-      <Layout className="full-height">
-        <Navbar collapsed={collapsed} setCollapsed={setCollapsed} />
-        <Layout>
-          <Sidebar collapsed={collapsed} />
-          <Layout style={{ marginLeft: collapsed ? 80 : 200 }}>
-            <Content style={{ margin: '16px', overflow: 'auto' }}>
-              <Routes>
-                <Route path="/" element={<Home />} />
-                <Route path="/chat/:userId?" element={<Chat />} />
-                <Route path="/profile" element={<Profile />} />
-                <Route path="/caro" element={<CaroGame />} />
-                <Route path="/farm" element={<Farm />} />
-                <Route path="/wallet" element={<Wallet />} />
-                <Route path="*" element={<Navigate to="/" replace />} />
-              </Routes>
-            </Content>
-          </Layout>
-        </Layout>
-      </Layout>
+      <AppRoutes isAuthenticated={!!user} />
     </Router>
   )
 }

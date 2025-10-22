@@ -1,25 +1,6 @@
-import React, { useState, useEffect } from 'react'
-import { 
-  Row, 
-  Col, 
-  Card, 
-  Statistic, 
-  List, 
-  Avatar, 
-  Button,
-  Typography,
-  Space,
-  Badge,
-  Spin
-} from 'antd'
-import { 
-  MessageOutlined,
-  PlayCircleOutlined,
-  BugOutlined,
-  WalletOutlined,
-  UserOutlined,
-  TrophyOutlined
-} from '@ant-design/icons'
+import { useState, useEffect } from 'react'
+import { Row, Col, Card, Statistic, List, Avatar, Button, Typography, Space, Badge, Spin} from 'antd'
+import { MessageOutlined, PlayCircleOutlined, BugOutlined, WalletOutlined, UserOutlined, TrophyOutlined} from '@ant-design/icons'
 import { useNavigate } from 'react-router-dom'
 import { chatAPI, caroAPI, farmAPI, walletAPI } from '../services/api'
 
@@ -70,7 +51,7 @@ interface HomeData {
   onlineUsers: User[]
 }
 
-const Home: React.FC = () => {
+export default function HomePage() {
   const navigate = useNavigate()
   const [loading, setLoading] = useState(true)
   const [data, setData] = useState<HomeData>({
@@ -122,11 +103,11 @@ const Home: React.FC = () => {
       }
 
       setData({
-        recentChats: chatsRes.data.slice(0, 5),
+        recentChats: Array.isArray(chatsRes.data) ? chatsRes.data.slice(0, 5) : [],
         gameStats,
         farmStats,
         walletStats,
-        onlineUsers: usersRes.data.filter((user: User) => user.is_online).slice(0, 10)
+        onlineUsers: Array.isArray(usersRes.data) ? usersRes.data.filter((user: User) => user.is_online).slice(0, 10) : []
       })
     } catch (error) {
       console.error('Error loading home data:', error)
@@ -153,7 +134,7 @@ const Home: React.FC = () => {
       <div style={{ marginBottom: 24 }}>
         <Title level={2}>
           <Space>
-            <span>💕</span>
+            <span>☁️</span>
             Chào mừng đến với Love Chat!
           </Space>
         </Title>
@@ -220,7 +201,7 @@ const Home: React.FC = () => {
             <Statistic
               title="Số dư ví"
               value={data.walletStats.current_balance || 0}
-              prefix={<WalletOutlined style={{ color: '#eb2f96' }} />}
+              prefix={<WalletOutlined style={{ color: '#1890ff' }} />}
               suffix="đ"
             />
             <Button 
@@ -246,7 +227,7 @@ const Home: React.FC = () => {
             }
           >
             <List
-              dataSource={data.recentChats}
+              dataSource={Array.isArray(data.recentChats) ? data.recentChats : []}
               renderItem={(chat) => (
                 <List.Item
                   onClick={() => navigate(`/chat/${chat.other_user?.id}`)}
@@ -279,7 +260,7 @@ const Home: React.FC = () => {
         <Col xs={24} lg={12}>
           <Card title="Người dùng đang online">
             <List
-              dataSource={data.onlineUsers}
+              dataSource={Array.isArray(data.onlineUsers) ? data.onlineUsers : []}
               renderItem={(user) => (
                 <List.Item
                   onClick={() => navigate(`/chat/${user.id}`)}
@@ -346,5 +327,3 @@ const Home: React.FC = () => {
     </div>
   )
 }
-
-export default Home

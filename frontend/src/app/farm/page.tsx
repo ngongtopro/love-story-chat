@@ -23,10 +23,10 @@ import {
   DeleteOutlined,
   GiftOutlined
 } from '@ant-design/icons'
-import { farmAPI } from '../services/api'
+import { farmAPI } from '../../services/api'
 import dayjs from 'dayjs'
 import relativeTime from 'dayjs/plugin/relativeTime'
-import './Farm.css'
+import '../../styles/Farm.css'
 
 // Add relativeTime plugin for dayjs
 dayjs.extend(relativeTime)
@@ -76,7 +76,7 @@ interface Transaction {
 const { Title, Text } = Typography
 const { Option } = Select
 
-const Farm = () => {
+export default function FarmPage() {
   const [loading, setLoading] = useState(true)
   const [farm, setFarm] = useState<Farm | null>(null)
   const [crops, setCrops] = useState<CropType[]>([])
@@ -510,5 +510,3 @@ const Farm = () => {
     </div>
   )
 }
-
-export default Farm

@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { 
   Card, 
@@ -9,9 +9,7 @@ import {
   Space,
   Divider,
   Alert,
-  theme,
-  Row,
-  Col
+  theme
 } from 'antd'
 import { 
   UserOutlined, 
@@ -20,7 +18,7 @@ import {
   EyeInvisibleOutlined,
   EyeTwoTone
 } from '@ant-design/icons'
-import { useAuth } from '../context/AuthContext'
+import { useAuth } from '../../../context/AuthContext'
 
 const { Title, Text } = Typography
 
@@ -29,7 +27,7 @@ interface LoginFormValues {
   password: string
 }
 
-const Login: React.FC = () => {
+export default function LoginPage() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const { login } = useAuth()
@@ -131,7 +129,7 @@ const Login: React.FC = () => {
               block
               loading={loading}
               style={{
-                background: 'linear-gradient(90deg, #ff69b4, #ff1493)',
+                background: 'linear-gradient(90deg, #1890ff, #40a9ff)',
                 border: 'none',
                 height: 48,
                 fontSize: 16
@@ -149,7 +147,7 @@ const Login: React.FC = () => {
         <div style={{ textAlign: 'center' }}>
           <Text type="secondary">
             Chưa có tài khoản?{' '}
-            <Link to="/register" style={{ color: '#ff69b4' }}>
+            <Link to="/register" style={{ color: '#1890ff' }}>
               Đăng ký ngay
             </Link>
           </Text>
@@ -158,5 +156,3 @@ const Login: React.FC = () => {
     </div>
   )
 }
-
-export default Login

@@ -20,10 +20,10 @@ import {
   UserOutlined,
   MessageOutlined
 } from '@ant-design/icons'
-import { chatAPI } from '../services/api'
+import { chatAPI } from '../../services/api'
 import dayjs from 'dayjs'
 import relativeTime from 'dayjs/plugin/relativeTime'
-import './Chat.css'
+import '../../styles/Chat.css'
 
 // Add relativeTime plugin for dayjs
 dayjs.extend(relativeTime)
@@ -55,7 +55,7 @@ interface PrivateChat {
 const { TextArea } = Input
 const { Text } = Typography
 
-const Chat = () => {
+export default function ChatPage() {
   const { userId } = useParams()
   const navigate = useNavigate()
   const { message } = App.useApp()
@@ -291,5 +291,3 @@ const Chat = () => {
     </Row>
   )
 }
-
-export default Chat

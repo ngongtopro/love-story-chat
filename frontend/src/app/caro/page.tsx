@@ -20,10 +20,10 @@ import {
   PlayCircleOutlined,
   TrophyOutlined
 } from '@ant-design/icons'
-import { caroAPI } from '../services/api'
+import { caroAPI } from '../../services/api'
 import dayjs from 'dayjs'
 import relativeTime from 'dayjs/plugin/relativeTime'
-import './CaroGame.css'
+import '../../styles/CaroGame.css'
 
 // Add relativeTime plugin for dayjs
 dayjs.extend(relativeTime)
@@ -59,7 +59,7 @@ interface CreateGameData {
 const { Title, Text } = Typography
 const { Option } = Select
 
-const CaroGame = () => {
+export default function CaroPage() {
   const [loading, setLoading] = useState(true)
   const [creating, setCreating] = useState(false)
   const [games, setGames] = useState<Game[]>([])
@@ -463,5 +463,3 @@ const CaroGame = () => {
     </div>
   )
 }
-
-export default CaroGame

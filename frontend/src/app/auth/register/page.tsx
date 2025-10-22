@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { 
   Card, 
@@ -15,16 +15,23 @@ import {
   MailOutlined,
   HeartOutlined 
 } from '@ant-design/icons'
-import { useAuth } from '../context/AuthContext'
+import { useAuth } from '../../../context/AuthContext'
 
 const { Title, Text } = Typography
 
-const Register = () => {
+interface RegisterFormValues {
+  username: string
+  email: string
+  password: string
+  confirmPassword: string
+}
+
+export default function RegisterPage() {
   const [loading, setLoading] = useState(false)
   const { register } = useAuth()
   const navigate = useNavigate()
 
-  const onFinish = async (values) => {
+  const onFinish = async (values: RegisterFormValues) => {
     setLoading(true)
     try {
       const result = await register({
@@ -47,7 +54,7 @@ const Register = () => {
       justifyContent: 'center',
       alignItems: 'center',
       minHeight: '100vh',
-      background: 'linear-gradient(135deg, #ff69b4 0%, #ff1493 100%)',
+      background: 'linear-gradient(135deg, #1890ff 0%, #40a9ff 100%)',
       padding: 20
     }}>
       <Card 
@@ -60,8 +67,8 @@ const Register = () => {
       >
         <div style={{ textAlign: 'center', marginBottom: 32 }}>
           <Space direction="vertical" size={8}>
-            <HeartOutlined style={{ fontSize: 48, color: '#ff69b4' }} />
-            <Title level={2} style={{ margin: 0, color: '#ff69b4' }}>
+            <HeartOutlined style={{ fontSize: 48, color: '#1890ff' }} />
+            <Title level={2} style={{ margin: 0, color: '#1890ff' }}>
               Love Chat
             </Title>
             <Text type="secondary">
@@ -143,7 +150,7 @@ const Register = () => {
               block
               loading={loading}
               style={{
-                background: 'linear-gradient(90deg, #ff69b4, #ff1493)',
+                background: 'linear-gradient(90deg, #1890ff, #40a9ff)',
                 border: 'none',
                 height: 48,
                 fontSize: 16
@@ -161,7 +168,7 @@ const Register = () => {
         <div style={{ textAlign: 'center' }}>
           <Text type="secondary">
             Đã có tài khoản?{' '}
-            <Link to="/login" style={{ color: '#ff69b4' }}>
+            <Link to="/login" style={{ color: '#1890ff' }}>
               Đăng nhập ngay
             </Link>
           </Text>
@@ -170,5 +177,3 @@ const Register = () => {
     </div>
   )
 }
-
-export default Register

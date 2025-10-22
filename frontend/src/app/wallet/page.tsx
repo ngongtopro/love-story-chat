@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import { useState, useEffect } from 'react'
 import {
   Card,
   Row,
@@ -25,17 +25,45 @@ import {
   HistoryOutlined,
   TrophyOutlined
 } from '@ant-design/icons'
-import { walletAPI } from '../services/api'
+import { walletAPI } from '../../services/api'
 import dayjs from 'dayjs'
 
 const { Title, Text } = Typography
 const { TabPane } = Tabs
 
-const Wallet = () => {
+interface Wallet {
+  balance: number
+}
+
+interface Transaction {
+  id: number
+  transaction_type: string
+  amount: number
+  description?: string
+  created_at: string
+  balance_after?: number
+}
+
+interface WalletStats {
+  total_transactions?: number
+  total_earned?: number
+}
+
+interface AddBalanceValues {
+  amount: number
+  description: string
+}
+
+interface DeductBalanceValues {
+  amount: number
+  description: string
+}
+
+export default function WalletPage() {
   const [loading, setLoading] = useState(true)
-  const [wallet, setWallet] = useState(null)
-  const [transactions, setTransactions] = useState([])
-  const [stats, setStats] = useState({})
+  const [wallet, setWallet] = useState<Wallet | null>(null)
+  const [transactions, setTransactions] = useState<Transaction[]>([])
+  const [stats, setStats] = useState<WalletStats>({})
   const [addModalVisible, setAddModalVisible] = useState(false)
   const [deductModalVisible, setDeductModalVisible] = useState(false)
   const [processing, setProcessing] = useState(false)
@@ -54,7 +82,7 @@ const Wallet = () => {
       ])
 
       // Try to load stats
-      let walletStats = {}
+      let walletStats: WalletStats = {}
       try {
         const statsRes = await walletAPI.getStats()
         walletStats = statsRes.data
@@ -63,7 +91,7 @@ const Wallet = () => {
       }
 
       setWallet(walletRes.data)
-      setTransactions(transactionsRes.data)
+      setTransactions(Array.isArray(transactionsRes.data) ? transactionsRes.data : [])
       setStats(walletStats)
     } catch (error) {
       console.error('Error loading wallet data:', error)
@@ -73,7 +101,7 @@ const Wallet = () => {
     }
   }
 
-  const addBalance = async (values) => {
+  const addBalance = async (values: AddBalanceValues) => {
     try {
       setProcessing(true)
       await walletAPI.addBalance(values.amount, values.description)
@@ -88,7 +116,7 @@ const Wallet = () => {
     }
   }
 
-  const deductBalance = async (values) => {
+  const deductBalance = async (values: DeductBalanceValues) => {
     try {
       setProcessing(true)
       await walletAPI.deductBalance(values.amount, values.description)
@@ -103,7 +131,7 @@ const Wallet = () => {
     }
   }
 
-  const getTransactionIcon = (transaction) => {
+  const getTransactionIcon = (transaction: Transaction) => {
     switch (transaction.transaction_type) {
       case 'game_win':
         return <TrophyOutlined style={{ color: '#52c41a' }} />
@@ -118,7 +146,7 @@ const Wallet = () => {
     }
   }
 
-  const getTransactionType = (transaction) => {
+  const getTransactionType = (transaction: Transaction) => {
     switch (transaction.transaction_type) {
       case 'game_win': return 'Thắng game'
       case 'game_bet': return 'Cược game'
@@ -349,7 +377,7 @@ const Wallet = () => {
             <InputNumber
               style={{ width: '100%' }}
               formatter={value => `${value}`.replace(/\B(?=(\d{3})+(?!\d))/g, ',')}
-              parser={value => value.replace(/\$\s?|(,*)/g, '')}
+              parser={value => value ? value.replace(/\$\s?|(,*)/g, '') : ''}
               placeholder="Nhập số tiền"
             />
           </Form.Item>
@@ -398,7 +426,7 @@ const Wallet = () => {
             <InputNumber
               style={{ width: '100%' }}
               formatter={value => `${value}`.replace(/\B(?=(\d{3})+(?!\d))/g, ',')}
-              parser={value => value.replace(/\$\s?|(,*)/g, '')}
+              parser={value => value ? value.replace(/\$\s?|(,*)/g, '') : ''}
               placeholder="Nhập số tiền"
             />
           </Form.Item>
@@ -432,5 +460,3 @@ const Wallet = () => {
     </div>
   )
 }
-
-export default Wallet
