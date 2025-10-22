@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import { useState, useEffect } from 'react'
 import {
   Card,
   Row,
@@ -11,7 +11,6 @@ import {
   Select,
   message,
   Spin,
-  Empty,
   Statistic,
   Badge,
   Space
@@ -19,11 +18,43 @@ import {
 import {
   PlusOutlined,
   PlayCircleOutlined,
-  TrophyOutlined,
-  UserOutlined
+  TrophyOutlined
 } from '@ant-design/icons'
 import { caroAPI } from '../services/api'
 import dayjs from 'dayjs'
+import relativeTime from 'dayjs/plugin/relativeTime'
+import './CaroGame.css'
+
+// Add relativeTime plugin for dayjs
+dayjs.extend(relativeTime)
+
+// Interfaces
+interface Player {
+  id: number
+  username: string
+}
+
+interface Game {
+  id: number
+  status: 'waiting' | 'playing' | 'finished'
+  player1?: Player
+  player2?: Player
+  current_player?: Player
+  winner?: Player
+  board?: string[]
+  created_at: string
+}
+
+interface GameStats {
+  total_games: number
+  games_won: number
+  win_rate: number
+  current_streak: number
+}
+
+interface CreateGameData {
+  board_size: number
+}
 
 const { Title, Text } = Typography
 const { Option } = Select
@@ -31,11 +62,11 @@ const { Option } = Select
 const CaroGame = () => {
   const [loading, setLoading] = useState(true)
   const [creating, setCreating] = useState(false)
-  const [games, setGames] = useState([])
-  const [waitingGames, setWaitingGames] = useState([])
-  const [activeGames, setActiveGames] = useState([])
-  const [stats, setStats] = useState({})
-  const [currentGame, setCurrentGame] = useState(null)
+  const [games, setGames] = useState<Game[]>([])
+  const [waitingGames, setWaitingGames] = useState<Game[]>([])
+  const [activeGames, setActiveGames] = useState<Game[]>([])
+  const [stats, setStats] = useState<GameStats>({} as GameStats)
+  const [currentGame, setCurrentGame] = useState<Game | null>(null)
   const [createModalVisible, setCreateModalVisible] = useState(false)
   const [gameModalVisible, setGameModalVisible] = useState(false)
 
@@ -49,13 +80,33 @@ const CaroGame = () => {
       
       // Load all game data
       const [gamesRes, waitingRes, activeRes] = await Promise.all([
-        caroAPI.getGames().catch(() => ({ data: [] })),
-        caroAPI.getWaitingGames().catch(() => ({ data: [] })),
-        caroAPI.getActiveGames().catch(() => ({ data: [] }))
+        caroAPI.getGames().catch((err) => {
+          console.warn('Failed to load games:', err)
+          return { data: [] }
+        }),
+        caroAPI.getWaitingGames().catch((err) => {
+          console.warn('Failed to load waiting games:', err)
+          return { data: [] }
+        }),
+        caroAPI.getActiveGames().catch((err) => {
+          console.warn('Failed to load active games:', err)
+          return { data: [] }
+        })
       ])
 
+      console.log('API Responses:', { 
+        games: gamesRes.data, 
+        waiting: waitingRes.data, 
+        active: activeRes.data 
+      })
+
       // Try to load stats
-      let gameStats = {}
+      let gameStats: GameStats = {
+        total_games: 0,
+        games_won: 0,
+        win_rate: 0,
+        current_streak: 0
+      }
       try {
         const statsRes = await caroAPI.getStats()
         gameStats = statsRes.data
@@ -63,9 +114,9 @@ const CaroGame = () => {
         console.log('Game stats not available')
       }
 
-      setGames(gamesRes.data)
-      setWaitingGames(waitingRes.data)
-      setActiveGames(activeRes.data)
+      setGames(Array.isArray(gamesRes.data) ? gamesRes.data : [])
+      setWaitingGames(Array.isArray(waitingRes.data) ? waitingRes.data : [])
+      setActiveGames(Array.isArray(activeRes.data) ? activeRes.data : [])
       setStats(gameStats)
     } catch (error) {
       console.error('Error loading game data:', error)
@@ -75,7 +126,7 @@ const CaroGame = () => {
     }
   }
 
-  const createGame = async (values) => {
+  const createGame = async (values: CreateGameData) => {
     try {
       setCreating(true)
       await caroAPI.createGame(values)
@@ -90,7 +141,7 @@ const CaroGame = () => {
     }
   }
 
-  const joinGame = async (gameId) => {
+  const joinGame = async (gameId: number) => {
     try {
       await caroAPI.joinGame(gameId)
       message.success('Tham gia game thành công!')
@@ -101,12 +152,12 @@ const CaroGame = () => {
     }
   }
 
-  const openGameModal = (game) => {
+  const openGameModal = (game: Game) => {
     setCurrentGame(game)
     setGameModalVisible(true)
   }
 
-  const makeMove = async (row, col) => {
+  const makeMove = async (row: number, col: number) => {
     if (!currentGame) return
 
     try {
@@ -122,7 +173,7 @@ const CaroGame = () => {
     }
   }
 
-  const renderBoard = (board) => {
+  const renderBoard = (board: string[]) => {
     if (!board) return null
 
     const boardSize = Math.sqrt(board.length)
@@ -133,7 +184,7 @@ const CaroGame = () => {
 
     return (
       <div className="caro-board" style={boardStyle}>
-        {board.map((cell, index) => {
+        {board.map((cell: string, index: number) => {
           const row = Math.floor(index / boardSize)
           const col = index % boardSize
           
@@ -224,7 +275,7 @@ const CaroGame = () => {
         <Col xs={24} lg={8}>
           <Card title="Game đang chờ">
             <List
-              dataSource={waitingGames}
+              dataSource={Array.isArray(waitingGames) ? waitingGames : []}
               renderItem={(game) => (
                 <List.Item
                   actions={[
@@ -261,7 +312,7 @@ const CaroGame = () => {
         <Col xs={24} lg={8}>
           <Card title="Game đang chơi">
             <List
-              dataSource={activeGames}
+              dataSource={Array.isArray(activeGames) ? activeGames : []}
               renderItem={(game) => (
                 <List.Item
                   actions={[
@@ -295,7 +346,7 @@ const CaroGame = () => {
         <Col xs={24} lg={8}>
           <Card title="Lịch sử game">
             <List
-              dataSource={games.filter(game => game.status === 'finished').slice(0, 10)}
+              dataSource={Array.isArray(games) ? games.filter(game => game.status === 'finished').slice(0, 10) : []}
               renderItem={(game) => (
                 <List.Item>
                   <List.Item.Meta
@@ -390,14 +441,14 @@ const CaroGame = () => {
                   {currentGame.player1?.username} vs {currentGame.player2?.username}
                 </Text>
                 {currentGame.status === 'playing' && (
-                  <Text type="primary">
+                  <Text style={{ color: '#1890ff' }}>
                     Lượt: {currentGame.current_player?.username}
                   </Text>
                 )}
               </Space>
             </div>
             
-            {renderBoard(currentGame.board)}
+            {currentGame.board && renderBoard(currentGame.board)}
             
             {currentGame.winner && (
               <div style={{ marginTop: 16 }}>

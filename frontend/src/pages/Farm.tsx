@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import { useState, useEffect } from 'react'
 import {
   Card,
   Row,
@@ -13,33 +13,78 @@ import {
   Progress,
   Space,
   List,
-  Badge,
-  Tooltip
+  Badge
 } from 'antd'
 import {
   BugOutlined,
   TrophyOutlined,
   ThunderboltOutlined,
-  DollarOutlined,
   PlusOutlined,
   DeleteOutlined,
   GiftOutlined
 } from '@ant-design/icons'
 import { farmAPI } from '../services/api'
 import dayjs from 'dayjs'
+import relativeTime from 'dayjs/plugin/relativeTime'
+import './Farm.css'
+
+// Add relativeTime plugin for dayjs
+dayjs.extend(relativeTime)
+
+// Interfaces
+interface CropType {
+  id: number
+  name: string
+  emoji: string
+  seed_price: number
+  sell_price: number
+  growth_time_minutes: number
+}
+
+interface Plot {
+  plot_number: number
+  state: 'empty' | 'planted' | 'ready' | 'withered'
+  crop_type?: CropType
+  time_until_ready?: number
+}
+
+interface Farm {
+  level: number
+  energy: number
+  max_energy: number
+  experience: number
+  experience_to_next_level?: number
+  plots_unlocked: number
+  plots?: Plot[]
+}
+
+interface FarmStats {
+  total_crops_planted: number
+  total_crops_harvested: number
+  total_money_earned: number
+  total_money_spent: number
+}
+
+interface Transaction {
+  id: number
+  transaction_type: string
+  amount: number
+  description: string
+  created_at: string
+}
 
 const { Title, Text } = Typography
 const { Option } = Select
 
 const Farm = () => {
   const [loading, setLoading] = useState(true)
-  const [farm, setFarm] = useState(null)
-  const [crops, setCrops] = useState([])
-  const [stats, setStats] = useState({})
-  const [transactions, setTransactions] = useState([])
+  const [farm, setFarm] = useState<Farm | null>(null)
+  const [crops, setCrops] = useState<CropType[]>([])
+  const [stats, setStats] = useState<FarmStats>({} as FarmStats)
+  const [transactions, setTransactions] = useState<Transaction[]>([])
   const [plantModalVisible, setPlantModalVisible] = useState(false)
-  const [selectedPlot, setSelectedPlot] = useState(null)
-  const [selectedCrop, setSelectedCrop] = useState(null)
+  const [selectedPlot, setSelectedPlot] = useState<number | null>(null)
+  const [selectedCrop, setSelectedCrop] = useState<number | null>(null)
 
   useEffect(() => {
     loadFarmData()
@@ -55,8 +100,13 @@ const Farm = () => {
       ])
 
       // Try to load stats and transactions
-      let farmStats = {}
-      let farmTransactions = []
+      let farmStats: FarmStats = {
+        total_crops_planted: 0,
+        total_crops_harvested: 0,
+        total_money_earned: 0,
+        total_money_spent: 0
+      }
+      let farmTransactions: Transaction[] = []
 
       try {
         const statsRes = await farmAPI.getStats()
@@ -67,13 +117,13 @@ const Farm = () => {
 
       try {
         const transactionsRes = await farmAPI.getTransactions()
-        farmTransactions = transactionsRes.data.slice(0, 10)
+        farmTransactions = Array.isArray(transactionsRes.data) ? transactionsRes.data.slice(0, 10) : []
       } catch (error) {
         console.log('Farm transactions not available')
       }
 
       setFarm(farmRes.data)
-      setCrops(cropsRes.data)
+      setCrops(Array.isArray(cropsRes.data) ? cropsRes.data : [])
       setStats(farmStats)
       setTransactions(farmTransactions)
     } catch (error) {
@@ -100,7 +150,7 @@ const Farm = () => {
     }
   }
 
-  const harvestPlot = async (plotNumber) => {
+  const harvestPlot = async (plotNumber: number) => {
     try {
       const response = await farmAPI.harvestPlot(plotNumber)
       message.success(response.data.message)
@@ -111,7 +161,7 @@ const Farm = () => {
     }
   }
 
-  const clearPlot = async (plotNumber) => {
+  const clearPlot = async (plotNumber: number) => {
     try {
       await farmAPI.clearPlot(plotNumber)
       message.success('Dọn dẹp ô đất thành công!')
@@ -133,12 +183,12 @@ const Farm = () => {
     }
   }
 
-  const openPlantModal = (plotNumber) => {
+  const openPlantModal = (plotNumber: number) => {
     setSelectedPlot(plotNumber)
     setPlantModalVisible(true)
   }
 
-  const renderPlot = (plot) => {
+  const renderPlot = (plot: Plot) => {
     const getPlotClass = () => {
       switch (plot.state) {
         case 'empty': return 'empty'
@@ -352,7 +402,7 @@ const Farm = () => {
             {/* Available Crops */}
             <Card title="Cây trồng có sẵn" size="small">
               <List
-                dataSource={crops.slice(0, 5)}
+                dataSource={Array.isArray(crops) ? crops.slice(0, 5) : []}
                 renderItem={(crop) => (
                   <List.Item>
                     <List.Item.Meta
@@ -378,7 +428,7 @@ const Farm = () => {
             {/* Recent Transactions */}
             <Card title="Giao dịch gần đây" size="small">
               <List
-                dataSource={transactions}
+                dataSource={Array.isArray(transactions) ? transactions : []}
                 renderItem={(transaction) => (
                   <List.Item>
                     <List.Item.Meta
@@ -444,7 +494,7 @@ const Farm = () => {
           value={selectedCrop}
           onChange={setSelectedCrop}
         >
-          {crops.map(crop => (
+          {Array.isArray(crops) ? crops.map(crop => (
             <Option key={crop.id} value={crop.id}>
               <Space>
                 <span>{crop.emoji}</span>
@@ -454,7 +504,7 @@ const Farm = () => {
                 </Text>
               </Space>
             </Option>
-          ))}
+          )) : []}
         </Select>
       </Modal>
     </div>

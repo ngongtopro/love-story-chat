@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import {
   Row,
@@ -12,7 +12,7 @@ import {
   Space,
   Badge,
   Spin,
-  message,
+  App,
   Empty
 } from 'antd'
 import {
@@ -22,20 +22,50 @@ import {
 } from '@ant-design/icons'
 import { chatAPI } from '../services/api'
 import dayjs from 'dayjs'
+import relativeTime from 'dayjs/plugin/relativeTime'
+import './Chat.css'
+
+// Add relativeTime plugin for dayjs
+dayjs.extend(relativeTime)
+
+// Interfaces
+interface User {
+  id: number
+  username: string
+  email: string
+  is_online?: boolean
+  first_name?: string
+  last_name?: string
+}
+
+interface Message {
+  id: number
+  content: string
+  timestamp: string
+  sender: User
+  is_own_message?: boolean
+}
+
+interface PrivateChat {
+  id: number
+  participants: User[]
+  created_at: string
+}
 
 const { TextArea } = Input
-const { Title, Text } = Typography
+const { Text } = Typography
 
 const Chat = () => {
   const { userId } = useParams()
   const navigate = useNavigate()
+  const { message } = App.useApp()
   const [loading, setLoading] = useState(true)
   const [sending, setSending] = useState(false)
   const [messageText, setMessageText] = useState('')
-  const [users, setUsers] = useState([])
-  const [messages, setMessages] = useState([])
-  const [currentChat, setCurrentChat] = useState(null)
-  const [selectedUser, setSelectedUser] = useState(null)
+  const [users, setUsers] = useState<User[]>([])
+  const [messages, setMessages] = useState<Message[]>([])
+  const [currentChat, setCurrentChat] = useState<PrivateChat | null>(null)
+  const [selectedUser, setSelectedUser] = useState<User | null>(null)
 
   useEffect(() => {
     loadUsers()
@@ -50,7 +80,8 @@ const Chat = () => {
   const loadUsers = async () => {
     try {
       const response = await chatAPI.getUsers()
-      setUsers(response.data)
+      console.log('Users API Response:', response.data)
+      setUsers(Array.isArray(response.data) ? response.data : [])
     } catch (error) {
       console.error('Error loading users:', error)
       message.error('Không thể tải danh sách người dùng')
@@ -59,14 +90,15 @@ const Chat = () => {
     }
   }
 
-  const selectUser = async (selectedUserId) => {
+  const selectUser = async (selectedUserId: string | number) => {
     try {
       setLoading(true)
-      const user = users.find(u => u.id === parseInt(selectedUserId))
+      const numericUserId = typeof selectedUserId === 'string' ? parseInt(selectedUserId) : selectedUserId
+      const user = users.find(u => u.id === numericUserId)
       if (!user) {
         // If users not loaded yet, try to load them first
         await loadUsers()
-        const foundUser = users.find(u => u.id === parseInt(selectedUserId))
+        const foundUser = users.find(u => u.id === numericUserId)
         if (!foundUser) {
           message.error('Không tìm thấy người dùng')
           return
@@ -77,12 +109,14 @@ const Chat = () => {
       }
 
       // Create or get existing chat
-      const chatResponse = await chatAPI.createPrivateChat(selectedUserId)
+      const chatResponse = await chatAPI.createPrivateChat(numericUserId)
+      console.log('Chat API Response:', chatResponse.data)
       setCurrentChat(chatResponse.data)
 
       // Load messages for this chat
       const messagesResponse = await chatAPI.getMessages(chatResponse.data.id)
-      setMessages(messagesResponse.data || [])
+      console.log('Messages API Response:', messagesResponse.data)
+      setMessages(Array.isArray(messagesResponse.data) ? messagesResponse.data : [])
       
       navigate(`/chat/${selectedUserId}`)
     } catch (error) {
@@ -100,8 +134,10 @@ const Chat = () => {
       setSending(true)
       const response = await chatAPI.sendMessage(currentChat.id, messageText.trim())
       
-      // Add new message to the list
-      setMessages(prev => [...prev, response.data])
+      // Add new message to the list (ensure response.data exists)
+      if (response.data) {
+        setMessages(prev => Array.isArray(prev) ? [...prev, response.data] : [response.data])
+      }
       setMessageText('')
     } catch (error) {
       console.error('Error sending message:', error)
@@ -111,7 +147,7 @@ const Chat = () => {
     }
   }
 
-  const handleKeyPress = (e) => {
+  const handleKeyPress = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault()
       sendMessage()
@@ -124,31 +160,32 @@ const Chat = () => {
         display: 'flex', 
         justifyContent: 'center', 
         alignItems: 'center', 
-        height: '50vh' 
+        height: '50vh',
+        flexDirection: 'column'
       }}>
         <Spin size="large" />
+        <Text style={{ marginTop: 16, color: '#1890ff' }}>
+          Đang tải danh sách người dùng...
+        </Text>
       </div>
     )
   }
 
   return (
-    <Row gutter={16} style={{ height: 'calc(100vh - 100px)' }}>
+    <Row gutter={16} className="chat-container">
       {/* Users List */}
       <Col xs={24} md={8}>
         <Card 
           title="Danh sách người dùng" 
           style={{ height: '100%' }}
-          bodyStyle={{ padding: 0, height: 'calc(100% - 57px)', overflow: 'auto' }}
+          styles={{ body: { padding: 0, height: 'calc(100% - 57px)', overflow: 'auto' } }}
         >
           <List
-            dataSource={users}
+            dataSource={Array.isArray(users) ? users : []}
             renderItem={(user) => (
               <List.Item
                 onClick={() => selectUser(user.id)}
-                style={{ 
-                  cursor: 'pointer',
-                  backgroundColor: selectedUser?.id === user.id ? '#f0f0f0' : 'transparent'
-                }}
+                className={`chat-user-item ${selectedUser?.id === user.id ? 'selected' : ''}`}
               >
                 <List.Item.Meta
                   avatar={
@@ -183,24 +220,19 @@ const Chat = () => {
             )
           }
           style={{ height: '100%' }}
-          bodyStyle={{ 
-            padding: 0, 
-            height: 'calc(100% - 57px)', 
-            display: 'flex', 
-            flexDirection: 'column' 
+          styles={{ 
+            body: { 
+              padding: 0, 
+              height: 'calc(100% - 57px)', 
+              display: 'flex', 
+              flexDirection: 'column' 
+            }
           }}
         >
           {selectedUser ? (
             <>
               {/* Messages Area */}
-              <div 
-                style={{ 
-                  flex: 1, 
-                  overflow: 'auto', 
-                  padding: 16,
-                  backgroundColor: '#fafafa'
-                }}
-              >
+              <div className="chat-messages">
                 {messages.length === 0 ? (
                   <Empty 
                     description="Chưa có tin nhắn nào"
@@ -208,31 +240,14 @@ const Chat = () => {
                   />
                 ) : (
                   <List
-                    dataSource={messages}
+                    dataSource={Array.isArray(messages) ? messages : []}
                     renderItem={(msg) => (
                       <List.Item style={{ border: 'none', padding: '8px 0' }}>
-                        <div style={{ width: '100%' }}>
-                          <div style={{
-                            display: 'flex',
-                            justifyContent: msg.is_own_message ? 'flex-end' : 'flex-start'
-                          }}>
-                            <div style={{
-                              maxWidth: '70%',
-                              padding: '8px 12px',
-                              borderRadius: 12,
-                              backgroundColor: msg.is_own_message ? '#1890ff' : '#ffffff',
-                              color: msg.is_own_message ? '#ffffff' : '#000000',
-                              border: msg.is_own_message ? 'none' : '1px solid #d9d9d9'
-                            }}>
-                              <div>{msg.content}</div>
-                              <div style={{
-                                fontSize: 12,
-                                opacity: 0.7,
-                                marginTop: 4,
-                                textAlign: 'right'
-                              }}>
-                                {dayjs(msg.timestamp).format('HH:mm')}
-                              </div>
+                        <div className={`message-bubble ${msg.is_own_message ? 'own' : 'other'}`}>
+                          <div className={`message-content ${msg.is_own_message ? 'own' : 'other'}`}>
+                            <div>{msg.content}</div>
+                            <div className="message-time">
+                              {dayjs(msg.timestamp).format('HH:mm')}
                             </div>
                           </div>
                         </div>
@@ -243,11 +258,7 @@ const Chat = () => {
               </div>
 
               {/* Message Input */}
-              <div style={{ 
-                padding: 16, 
-                borderTop: '1px solid #f0f0f0',
-                backgroundColor: '#ffffff'
-              }}>
+              <div className="message-input-area">
                 <Space.Compact style={{ width: '100%' }}>
                   <TextArea
                     value={messageText}
@@ -270,13 +281,7 @@ const Chat = () => {
               </div>
             </>
           ) : (
-            <div style={{
-              display: 'flex',
-              justifyContent: 'center',
-              alignItems: 'center',
-              height: '100%',
-              flexDirection: 'column'
-            }}>
+            <div className="empty-chat">
               <MessageOutlined style={{ fontSize: 64, color: '#d9d9d9', marginBottom: 16 }} />
               <Text type="secondary">Chọn một người dùng để bắt đầu trò chuyện</Text>
             </div>

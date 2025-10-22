@@ -75,16 +75,16 @@ export const authAPI = {
 
 // Chat API
 export const chatAPI = {
-  getUsers: () => api.get('/api/chat/users/'),
-  getProfile: (userId) => api.get(`/api/chat/profiles/${userId}/`),
-  getPrivateChats: () => api.get('/api/chat/private-chats/'),
-  getMessages: (chatId) => api.get(`/api/chat/private-chats/${chatId}/messages/`),
-  sendMessage: (chatId, content) => 
-    api.post(`/api/chat/private-chats/${chatId}/send_message/`, { content }),
-  createPrivateChat: (otherUserId) =>
-    api.post('/api/chat/private-chats/', { other_user_id: otherUserId }),
-  getRooms: () => api.get('/api/chat/rooms/'),
-  getRoomMessages: (roomId) => api.get(`/api/chat/rooms/${roomId}/messages/`),
+  getUsers: () => api.get('/users/'),
+  getProfile: (userId: number | string) => api.get(`/profiles/${userId}/`),
+  getPrivateChats: () => api.get('/chats/'),
+  getMessages: (chatId: number | string) => api.get(`/chats/${chatId}/messages/`),
+  sendMessage: (chatId: number | string, content: string) => 
+    api.post(`/chats/${chatId}/send_message/`, { content }),
+  createPrivateChat: (otherUserId: number) =>
+    api.post('/chats/', { other_user_id: otherUserId }),
+  getRooms: () => api.get('/rooms/'),
+  getRoomMessages: (roomId: number | string) => api.get(`/rooms/${roomId}/messages/`),
 }
 
 // Caro Game API
