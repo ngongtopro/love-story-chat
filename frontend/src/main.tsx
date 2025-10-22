@@ -16,13 +16,15 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
       locale={viVN}
       theme={{
         token: {
-          colorPrimary: '#ff69b4',
+          colorPrimary: '#1890ff',
           borderRadius: 8,
           colorBgContainer: '#ffffff',
+          colorBgLayout: '#f0f8ff',
+          colorBgBase: '#ffffff',
         },
         components: {
           Layout: {
-            bodyBg: '#f5f5f5',
+            bodyBg: '#f0f8ff',
             headerBg: '#ffffff',
             siderBg: '#ffffff',
           },

@@ -17,14 +17,15 @@ const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
         algorithm: theme.defaultAlgorithm,
         token: {
           // Seed Token
-          colorPrimary: '#ff69b4',
+          colorPrimary: '#1890ff',
           borderRadius: 8,
           colorBgContainer: '#ffffff',
           
           // Alias Token
           colorBgElevated: '#ffffff',
-          colorBorder: '#f0f0f0',
-          colorBorderSecondary: '#f5f5f5',
+          colorBgLayout: '#f0f8ff',
+          colorBorder: '#e6f2ff',
+          colorBorderSecondary: '#f0f8ff',
           
           // Typography
           fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
@@ -42,21 +43,21 @@ const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
         },
         components: {
           Layout: {
-            bodyBg: '#f5f5f5',
+            bodyBg: '#f0f8ff',
             headerBg: '#ffffff',
             siderBg: '#ffffff',
             triggerBg: '#ffffff',
-            triggerColor: '#000000d9',
+            triggerColor: '#1890ff',
           },
           Menu: {
             itemBg: 'transparent',
-            itemSelectedBg: '#f6ffed',
-            itemSelectedColor: '#52c41a',
-            itemHoverBg: '#f0f0f0',
+            itemSelectedBg: '#e6f4ff',
+            itemSelectedColor: '#1890ff',
+            itemHoverBg: '#f0f8ff',
           },
           Card: {
             headerBg: 'transparent',
-            actionsBg: '#fafafa',
+            actionsBg: '#f0f8ff',
           },
           Button: {
             borderRadius: 8,

@@ -83,8 +83,8 @@ const Navbar: React.FC<NavbarProps> = ({ collapsed, setCollapsed }) => {
           style={{ marginRight: 16 }}
         />
         <div style={{ display: 'flex', alignItems: 'center' }}>
-          <span style={{ fontSize: 24, marginRight: 8 }}>💕</span>
-          <Text strong style={{ fontSize: 18, color: '#ff69b4' }}>
+          <span style={{ fontSize: 24, marginRight: 8 }}>☁️</span>
+          <Text strong style={{ fontSize: 18, color: token.colorPrimary }}>
             Love Chat
           </Text>
         </div>

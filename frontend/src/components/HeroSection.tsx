@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react'
 import { Typography, Button, Space, Row, Col } from 'antd'
 import { 
-  HeartOutlined, 
+  CloudOutlined, 
   RightOutlined,
   MessageOutlined,
   PlayCircleOutlined,
@@ -34,7 +34,7 @@ const HeroSection: React.FC = () => {
   return (
     <div style={{
       minHeight: '100vh',
-      background: 'linear-gradient(135deg, #ff69b415 0%, #ff149305 100%)',
+      background: 'linear-gradient(135deg, #1890ff15 0%, #40a9ff05 100%)',
       display: 'flex',
       alignItems: 'center',
       padding: '0 50px',
@@ -49,9 +49,9 @@ const HeroSection: React.FC = () => {
         right: 0,
         bottom: 0,
         background: `
-          radial-gradient(circle at 20% 50%, #ff69b410 0%, transparent 50%),
-          radial-gradient(circle at 80% 20%, #ff149310 0%, transparent 50%),
-          radial-gradient(circle at 40% 80%, #ff69b408 0%, transparent 50%)
+          radial-gradient(circle at 20% 50%, #1890ff10 0%, transparent 50%),
+          radial-gradient(circle at 80% 20%, #40a9ff10 0%, transparent 50%),
+          radial-gradient(circle at 40% 80%, #1890ff08 0%, transparent 50%)
         `,
         animation: 'float 6s ease-in-out infinite'
       }} />
@@ -60,9 +60,9 @@ const HeroSection: React.FC = () => {
         <Col xs={24} lg={12}>
           <Space direction="vertical" size="large" style={{ width: '100%' }}>
             <div style={{ textAlign: 'center' }}>
-              <HeartOutlined style={{ 
+              <CloudOutlined style={{ 
                 fontSize: 120, 
-                color: '#ff69b4',
+                color: '#1890ff',
                 marginBottom: 32,
                 animation: 'pulse 2s ease-in-out infinite'
               }} />
@@ -73,7 +73,7 @@ const HeroSection: React.FC = () => {
               fontWeight: 700,
               textAlign: 'center',
               marginBottom: 16,
-              background: 'linear-gradient(135deg, #ff69b4 0%, #ff1493 100%)',
+              background: 'linear-gradient(135deg, #1890ff 0%, #40a9ff 100%)',
               WebkitBackgroundClip: 'text',
               WebkitTextFillColor: 'transparent',
               animation: 'slideInUp 1s ease-out'
@@ -102,7 +102,7 @@ const HeroSection: React.FC = () => {
               <Space align="center" size="middle">
                 <div style={{
                   fontSize: 24,
-                  color: '#ff69b4',
+                  color: '#1890ff',
                   transition: 'all 0.5s ease'
                 }}>
                   {features[currentFeature].icon}
@@ -130,7 +130,7 @@ const HeroSection: React.FC = () => {
                     padding: '0 32px',
                     fontSize: 16,
                     borderRadius: 28,
-                    background: 'linear-gradient(135deg, #ff69b4 0%, #ff1493 100%)',
+                    background: 'linear-gradient(135deg, #1890ff 0%, #40a9ff 100%)',
                     border: 'none',
                     animation: 'slideInUp 1s ease-out 0.4s both'
                   }}

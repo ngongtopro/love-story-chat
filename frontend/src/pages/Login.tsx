@@ -16,7 +16,7 @@ import {
 import { 
   UserOutlined, 
   LockOutlined,
-  HeartOutlined,
+  CloudOutlined,
   EyeInvisibleOutlined,
   EyeTwoTone
 } from '@ant-design/icons'
@@ -54,7 +54,7 @@ const Login: React.FC = () => {
       justifyContent: 'center',
       alignItems: 'center',
       minHeight: '100vh',
-      background: 'linear-gradient(135deg, #ff69b4 0%, #ff1493 100%)',
+      background: 'linear-gradient(135deg, #1890ff 0%, #40a9ff 100%)',
       padding: 20
     }}>
       <Card 
@@ -67,7 +67,7 @@ const Login: React.FC = () => {
       >
         <div style={{ textAlign: 'center', marginBottom: 32 }}>
           <Space direction="vertical" size={8}>
-            <HeartOutlined style={{ fontSize: 48, color: token.colorPrimary }} />
+            <CloudOutlined style={{ fontSize: 48, color: token.colorPrimary }} />
             <Title level={2} style={{ margin: 0, color: token.colorPrimary }}>
               Love Chat
             </Title>

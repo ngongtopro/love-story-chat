@@ -13,7 +13,7 @@ import {
   theme
 } from 'antd'
 import {
-  HeartOutlined,
+  CloudOutlined,
   MessageOutlined,
   PlayCircleOutlined,
   BugOutlined,
@@ -44,17 +44,17 @@ const LandingPage: React.FC = () => {
       description: 'Trò chuyện trực tuyến với bạn bè một cách nhanh chóng và an toàn'
     },
     {
-      icon: <PlayCircleOutlined style={{ fontSize: 24, color: '#52c41a' }} />,
+      icon: <PlayCircleOutlined style={{ fontSize: 24, color: '#40a9ff' }} />,
       title: 'Game Online',
       description: 'Chơi game Caro và nhiều trò chơi khác cùng người thân yêu'
     },
     {
-      icon: <BugOutlined style={{ fontSize: 24, color: '#fa8c16' }} />,
+      icon: <BugOutlined style={{ fontSize: 24, color: '#1890ff' }} />,
       title: 'Trang Trại Ảo',
       description: 'Xây dựng và quản lý trang trại của riêng bạn'
     },
     {
-      icon: <WalletOutlined style={{ fontSize: 24, color: '#eb2f96' }} />,
+      icon: <WalletOutlined style={{ fontSize: 24, color: '#40a9ff' }} />,
       title: 'Ví Điện Tử',
       description: 'Quản lý tài chính cá nhân một cách dễ dàng và tiện lợi'
     }
@@ -101,7 +101,7 @@ const LandingPage: React.FC = () => {
         <Row justify="space-between" align="middle" style={{ height: '100%' }}>
           <Col>
             <Space align="center">
-              <HeartOutlined style={{ fontSize: 32, color: token.colorPrimary }} />
+              <CloudOutlined style={{ fontSize: 32, color: token.colorPrimary }} />
               <Title level={3} style={{ margin: 0, color: token.colorPrimary }}>
                 Love Chat
               </Title>
@@ -270,7 +270,7 @@ const LandingPage: React.FC = () => {
 
         {/* CTA Section */}
         <div style={{
-          background: `linear-gradient(135deg, ${token.colorPrimary} 0%, #ff1493 100%)`,
+          background: `linear-gradient(135deg, ${token.colorPrimary} 0%, #40a9ff 100%)`,
           padding: '80px 50px',
           textAlign: 'center',
           color: '#fff'
@@ -323,7 +323,7 @@ const LandingPage: React.FC = () => {
           <Col xs={24} md={8}>
             <Space direction="vertical" size="middle">
               <Space align="center">
-                <HeartOutlined style={{ fontSize: 24, color: token.colorPrimary }} />
+                <CloudOutlined style={{ fontSize: 24, color: token.colorPrimary }} />
                 <Text strong style={{ color: '#fff', fontSize: 18 }}>
                   Love Chat
                 </Text>
