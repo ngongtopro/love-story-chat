@@ -20,7 +20,6 @@ import {
   PlusOutlined,
   PlayCircleOutlined,
   TrophyOutlined,
-  GamepadOutlined,
   UserOutlined
 } from '@ant-design/icons'
 import { caroAPI } from '../services/api'
@@ -186,7 +185,7 @@ const CaroGame = () => {
             <Statistic
               title="Tổng trận"
               value={stats.total_games || 0}
-              prefix={<GamepadOutlined />}
+              prefix={<PlayCircleOutlined />}
             />
           </Card>
         </Col>

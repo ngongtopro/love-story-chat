@@ -1,10 +1,25 @@
-import React, { createContext, useState, useContext, useEffect } from 'react'
+import React, { createContext, useState, useContext, useEffect, ReactNode } from 'react'
 import { message } from 'antd'
 import { authAPI } from '../services/api'
 
-const AuthContext = createContext()
+interface User {
+  id?: number
+  username?: string
+  email?: string
+  authenticated: boolean
+}
 
-export const useAuth = () => {
+interface AuthContextType {
+  user: User | null
+  login: (username: string, password: string) => Promise<{ success: boolean; error?: string }>
+  register: (userData: any) => Promise<{ success: boolean; error?: string }>
+  logout: () => void
+  loading: boolean
+}
+
+const AuthContext = createContext<AuthContextType | null>(null)
+
+export const useAuth = (): AuthContextType => {
   const context = useContext(AuthContext)
   if (!context) {
     throw new Error('useAuth must be used within an AuthProvider')
@@ -12,8 +27,12 @@ export const useAuth = () => {
   return context
 }
 
-export const AuthProvider = ({ children }) => {
-  const [user, setUser] = useState(null)
+interface AuthProviderProps {
+  children: ReactNode
+}
+
+export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
+  const [user, setUser] = useState<User | null>(null)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -40,7 +59,7 @@ export const AuthProvider = ({ children }) => {
     }
   }
 
-  const login = async (username, password) => {
+  const login = async (username: string, password: string) => {
     try {
       const response = await authAPI.login(username, password)
       const { access, refresh } = response.data
@@ -52,19 +71,19 @@ export const AuthProvider = ({ children }) => {
       message.success('Đăng nhập thành công!')
       
       return { success: true }
-    } catch (error) {
+    } catch (error: any) {
       const errorMessage = error.response?.data?.detail || 'Đăng nhập thất bại'
       message.error(errorMessage)
       return { success: false, error: errorMessage }
     }
   }
 
-  const register = async (userData) => {
+  const register = async (userData: any) => {
     try {
       await authAPI.register(userData)
       message.success('Đăng ký thành công! Vui lòng đăng nhập.')
       return { success: true }
-    } catch (error) {
+    } catch (error: any) {
       const errorMessage = error.response?.data?.detail || 'Đăng ký thất bại'
       message.error(errorMessage)
       return { success: false, error: errorMessage }

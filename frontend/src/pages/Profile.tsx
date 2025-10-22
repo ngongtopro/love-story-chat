@@ -16,7 +16,7 @@ import {
   UserOutlined,
   MessageOutlined,
   TrophyOutlined,
-  GamepadOutlined,
+  PlayCircleOutlined,
   CalendarOutlined
 } from '@ant-design/icons'
 import { chatAPI, caroAPI } from '../services/api'
@@ -134,7 +134,7 @@ const Profile = () => {
                 <Statistic
                   title="Tổng trận đấu"
                   value={profileData.gameStats.total_games || 0}
-                  prefix={<GamepadOutlined />}
+                  prefix={<PlayCircleOutlined />}
                 />
               </Col>
               <Col xs={12} sm={8}>

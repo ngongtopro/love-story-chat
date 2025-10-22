@@ -213,3 +213,142 @@ code {
     font-size: 16px;
   }
 }
+
+/* Landing Page Styles */
+.landing-page .ant-layout-header {
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+}
+
+.landing-page .ant-card {
+  transition: all 0.3s ease;
+}
+
+.landing-page .ant-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+}
+
+.landing-page .ant-btn {
+  transition: all 0.3s ease;
+}
+
+.landing-page .ant-btn:hover {
+  transform: translateY(-1px);
+}
+
+/* Gradient Animation */
+@keyframes gradient {
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
+}
+
+.gradient-bg {
+  background: linear-gradient(-45deg, #ff69b4, #ff1493, #ff69b4, #ff8fa3);
+  background-size: 400% 400%;
+  animation: gradient 15s ease infinite;
+}
+
+/* Responsive Design for Landing Page */
+@media (max-width: 768px) {
+  .landing-page .ant-layout-header {
+    padding: 0 20px;
+  }
+  
+  .landing-page .ant-typography h1 {
+    font-size: 2.5rem !important;
+  }
+  
+  .landing-page .ant-btn-lg {
+    height: 48px;
+    padding: 0 24px;
+    font-size: 14px;
+  }
+}
+
+@media (max-width: 576px) {
+  .landing-page .ant-typography h1 {
+    font-size: 2rem !important;
+  }
+  
+  .landing-page .ant-col {
+    padding: 0 12px;
+  }
+}
+
+/* Animations */
+@keyframes pulse {
+  0%, 100% { 
+    transform: scale(1); 
+  }
+  50% { 
+    transform: scale(1.05); 
+  }
+}
+
+@keyframes float {
+  0%, 100% { 
+    transform: translateY(0px); 
+  }
+  50% { 
+    transform: translateY(-10px); 
+  }
+}
+
+@keyframes slideInUp {
+  from {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes slideInRight {
+  from {
+    opacity: 0;
+    transform: translateX(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+/* Animation Classes */
+.pulse {
+  animation: pulse 2s ease-in-out infinite;
+}
+
+.float {
+  animation: float 6s ease-in-out infinite;
+}
+
+.slideInUp {
+  animation: slideInUp 1s ease-out;
+}
+
+.slideInRight {
+  animation: slideInRight 1s ease-out;
+}
+
+.fadeIn {
+  animation: fadeIn 1s ease-out;
+}
