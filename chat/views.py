@@ -19,65 +19,6 @@ logger = logging.getLogger(__name__)
 
 
 @login_required
-def home(request):
-    """Display user's private chats"""
-    try:
-        # Mark user as online
-        user_online_key = f"user_{request.user.id}_last_seen"
-        cache.set(user_online_key, time.time(), timeout=300)  # 5 minutes
-    except Exception as e:
-        logger.error(f"Cache error when setting user online status: {e}")
-    
-    # Get all users for starting new chats (excluding current user)
-    all_users = User.objects.exclude(id=request.user.id).order_by('username')
-    
-    # Create users data with online status
-    current_time = time.time()
-    users_with_status = []
-    for user in all_users:
-        is_online = False
-        try:
-            user_last_seen_key = f"user_{user.id}_last_seen"
-            last_seen = cache.get(user_last_seen_key)
-            is_online = last_seen and (current_time - last_seen < 300)
-        except Exception as e:
-            logger.error(f"Cache error when getting user {user.id} online status: {e}")
-        
-        users_with_status.append({
-            'user': user,
-            'is_online': is_online,
-            'id': user.id,
-            'username': user.username
-        })
-    
-    # Get current user's chats
-    user_chats = PrivateChat.get_user_chats(request.user)
-    
-    # Prepare chat data with latest messages and other user info
-    chats_data = []
-    for chat in user_chats:
-        print(chat)
-        other_user = chat.get_other_user(request.user)
-        latest_message = chat.get_latest_message()
-        unread_count = chat.private_messages.filter(
-            sender=other_user,
-            is_read=False
-        ).count()
-        
-        chats_data.append({
-            'chat': chat,
-            'other_user': other_user,
-            'latest_message': latest_message,
-            'unread_count': unread_count
-        })
-    
-    return render(request, 'chat/home.html', {
-        'chats_data': chats_data,
-        'all_users': users_with_status,
-    })
-
-
-@login_required
 def chat_view(request, user_id):
     """Display private chat with specific user"""
     other_user = get_object_or_404(User, id=user_id)
