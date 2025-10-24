@@ -4,7 +4,7 @@ from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 from django.contrib.auth.models import User
 from django.db.models import Q
-from .models import CaroGame, RoomCaroGame
+from .models import CaroGame, CaroMove
 from chat.models import PrivateChat
 import json
 import logging
@@ -447,16 +447,18 @@ def get_game_stats(request):
     """Get user's Caro game statistics"""
     try:
         # Get private chat game stats
-        private_games_won = CaroGame.objects.filter(winner=request.user).count()
+        private_games_won = CaroGame.objects.filter(game_type='private', winner=request.user).count()
         private_games_played = CaroGame.objects.filter(
             Q(player1=request.user) | Q(player2=request.user),
+            game_type='private',
             status='finished'
         ).count()
         
         # Get room game stats  
-        room_games_won = RoomCaroGame.objects.filter(winner=request.user).count()
-        room_games_played = RoomCaroGame.objects.filter(
+        room_games_won = CaroGame.objects.filter(game_type='room', winner=request.user).count()
+        room_games_played = CaroGame.objects.filter(
             Q(player1=request.user) | Q(player2=request.user),
+            game_type='room',
             status='finished'
         ).count()
         
@@ -551,15 +553,16 @@ def list_caro_rooms(request):
     try:
         # Get all active games
         from . import models as caro_models
-        from .models import RoomCaroGame
         
         # Get waiting rooms (where players can join)
-        waiting_rooms = RoomCaroGame.objects.filter(
+        waiting_rooms = CaroGame.objects.filter(
+            game_type='room',
             status='waiting'
         ).select_related('player1').order_by('-created_at')
         
         # Get playing rooms (for viewing)
-        playing_rooms = RoomCaroGame.objects.filter(
+        playing_rooms = CaroGame.objects.filter(
+            game_type='room',
             status='playing'
         ).select_related('player1', 'player2').order_by('-updated_at')[:10]
         
@@ -609,10 +612,11 @@ def get_room_game_status(request, room_name):
     try:
         logger.info(f"Getting room game status for: {room_name}")
         
-        # Check if RoomCaroGame model exists and is accessible
+        # Check if CaroGame model exists and is accessible
         try:
-            room_game = RoomCaroGame.objects.filter(
-                room_name=room_name,
+            room_game = CaroGame.objects.filter(
+                game_type='room',
+                chat_id=room_name,
                 status__in=['waiting', 'playing']
             ).first()
             

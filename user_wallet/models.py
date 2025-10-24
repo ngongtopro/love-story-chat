@@ -81,8 +81,8 @@ class WalletTransaction(models.Model):
     amount = models.IntegerField()  # Positive for credit, negative for debit
     balance_after = models.IntegerField()  # Balance after this transaction
     description = models.TextField(blank=True)
-    # Using string reference to avoid circular import - game field will be set from caro_game app
-    game = models.ForeignKey('caro_game.RoomCaroGame', on_delete=models.SET_NULL, null=True, blank=True)
+    # Using string reference to avoid circular import - game field will reference CaroGame for both private and room games
+    game = models.ForeignKey('caro_game.CaroGame', on_delete=models.SET_NULL, null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     
     class Meta:
