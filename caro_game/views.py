@@ -446,24 +446,12 @@ def abandon_room_caro_game(request, room_name):
 def get_game_stats(request):
     """Get user's Caro game statistics"""
     try:
-        # Get private chat game stats
-        private_games_won = CaroGame.objects.filter(game_type='private', winner=request.user).count()
-        private_games_played = CaroGame.objects.filter(
+        # Get all game stats (all are room games now)
+        total_games_won = CaroGame.objects.filter(winner=request.user).count()
+        total_games_played = CaroGame.objects.filter(
             Q(player1=request.user) | Q(player2=request.user),
-            game_type='private',
             status='finished'
         ).count()
-        
-        # Get room game stats  
-        room_games_won = CaroGame.objects.filter(game_type='room', winner=request.user).count()
-        room_games_played = CaroGame.objects.filter(
-            Q(player1=request.user) | Q(player2=request.user),
-            game_type='room',
-            status='finished'
-        ).count()
-        
-        total_games_won = private_games_won + room_games_won
-        total_games_played = private_games_played + room_games_played
         
         win_rate = (total_games_won / total_games_played * 100) if total_games_played > 0 else 0
         
@@ -472,15 +460,7 @@ def get_game_stats(request):
             'stats': {
                 'total_games_played': total_games_played,
                 'total_games_won': total_games_won,
-                'win_rate': round(win_rate, 1),
-                'private_games': {
-                    'played': private_games_played,
-                    'won': private_games_won
-                },
-                'room_games': {
-                    'played': room_games_played,
-                    'won': room_games_won
-                }
+                'win_rate': round(win_rate, 1)
             }
         })
     except Exception as e:
@@ -556,13 +536,11 @@ def list_caro_rooms(request):
         
         # Get waiting rooms (where players can join)
         waiting_rooms = CaroGame.objects.filter(
-            game_type='room',
             status='waiting'
         ).select_related('player1').order_by('-created_at')
         
         # Get playing rooms (for viewing)
         playing_rooms = CaroGame.objects.filter(
-            game_type='room',
             status='playing'
         ).select_related('player1', 'player2').order_by('-updated_at')[:10]
         
@@ -615,8 +593,7 @@ def get_room_game_status(request, room_name):
         # Check if CaroGame model exists and is accessible
         try:
             room_game = CaroGame.objects.filter(
-                game_type='room',
-                chat_id=room_name,
+                room_name=room_name,
                 status__in=['waiting', 'playing']
             ).first()
             

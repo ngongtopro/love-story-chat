@@ -27,7 +27,7 @@ class CaroMove(models.Model):
 
 
 class CaroGame(models.Model):
-    """Caro (Tic-tac-toe) game - supports both private chat and room games"""
+    """Caro (Tic-tac-toe) room game with betting system"""
     
     GAME_STATUS_CHOICES = [
         ('waiting', 'Waiting for Player'),
@@ -37,6 +37,7 @@ class CaroGame(models.Model):
     ]
        
     # Game identification
+    room_name = models.CharField(max_length=100, db_index=True)
     game_id = models.CharField(max_length=100, unique=True, db_index=True)
     
     # Players
@@ -47,9 +48,10 @@ class CaroGame(models.Model):
     current_turn = models.CharField(max_length=20, default='X')  # 'X' or 'O'
     status = models.CharField(max_length=10, choices=GAME_STATUS_CHOICES, default='waiting', db_index=True)
     winner = models.ForeignKey(User, on_delete=models.CASCADE, related_name='won_caro_games', null=True, blank=True)
+    win_condition = models.IntegerField(default=5)  # Number in a row to win
     
-    # Betting system (only for room games)
-    bet_amount = models.IntegerField(default=0)  # Amount each player bets (0 for private games)
+    # Betting system
+    bet_amount = models.IntegerField(default=10000)  # Amount each player bets
     total_pot = models.IntegerField(default=0)  # Total money in the pot
     winner_prize = models.IntegerField(default=0)  # Amount winner receives (90%)
     house_fee = models.IntegerField(default=0)  # House fee (10%)
@@ -67,7 +69,7 @@ class CaroGame(models.Model):
     class Meta:
         ordering = ['-created_at']
         indexes = [
-            models.Index(fields=['game_type', 'status']),
+            models.Index(fields=['room_name', 'status']),
             models.Index(fields=['game_id']),
             models.Index(fields=['player1', '-created_at']),
             models.Index(fields=['player2', '-created_at']),
@@ -80,20 +82,20 @@ class CaroGame(models.Model):
     def save(self, *args, **kwargs):
         if not self.game_id:
             from django.utils import timezone
-            prefix = 'room_caro'
             timestamp = timezone.now().strftime('%H%M%S_%d%m%Y')
-            self.game_id = f"{prefix}_{timestamp}"
+            self.game_id = f"caro_{self.room_name}_{timestamp}"
         
-        # Calculate betting amounts for room games
-        self.total_pot = self.bet_amount * 2  # Both players bet
-        self.winner_prize = int(self.total_pot * 0.9)  # 90% to winner
-        self.house_fee = self.total_pot - self.winner_prize  # 10% house fee
+        # Calculate betting amounts
+        if self.bet_amount and not self.total_pot:
+            self.total_pot = self.bet_amount * 2  # Both players bet
+            self.winner_prize = int(self.total_pot * 0.9)  # 90% to winner
+            self.house_fee = self.total_pot - self.winner_prize  # 10% house fee
             
         super().save(*args, **kwargs)
     
     def get_moves_list(self):
-        """Get list of all moves in order"""
-        return list(self.moves.all().values('row', 'col', 'symbol', 'move_number', 'player_username'))
+        """Get queryset of all moves in order"""
+        return self.moves.all().select_related('player')
 
     def join_game(self, player2):
         """Join existing game"""
@@ -118,50 +120,97 @@ class CaroGame(models.Model):
            (current_symbol == 'O' and self.current_turn != 'O'):
             return False, "Not your turn"
         
-        # Make the move
-        if self.make_move(row, col, player, current_symbol):
-            from django.utils import timezone
-            
-            # Check for winner
-            winner_symbol = self.check_winner()
-            if winner_symbol:
-                self.status = 'finished'
-                self.winner = self.player1 if winner_symbol == 'X' else self.player2
-                self.finished_at = timezone.now()
-                if self.started_at:
-                    self.game_duration = self.finished_at - self.started_at
-                
-                # Update player statistics
-                winner_profile = getattr(self.winner, 'profile', None)
-                loser_profile = getattr(self.player1 if self.winner == self.player2 else self.player2, 'profile', None)
-                
-                if winner_profile:
-                    winner_profile.update_game_stats(won=True)
-                if loser_profile:
-                    loser_profile.update_game_stats(won=False)
-                    
-            elif self.is_board_full():
-                # Draw
-                self.status = 'finished'
-                self.finished_at = timezone.now()
-                if self.started_at:
-                    self.game_duration = self.finished_at - self.started_at
-                
-                # Update both players statistics (no winner)
-                p1_profile = getattr(self.player1, 'profile', None)
-                p2_profile = getattr(self.player2, 'profile', None)
-                if p1_profile:
-                    p1_profile.update_game_stats(won=False)
-                if p2_profile:
-                    p2_profile.update_game_stats(won=False)
-            else:
-                # Continue game
-                self.current_turn = 'O' if current_symbol == 'X' else 'X'
-            
-            self.save()
-            return True, "Move successful"
+        # Check if move already exists at this position
+        if self.moves.filter(row=row, col=col).exists():
+            return False, "Position already occupied"
         
-        return False, "Invalid move"
+        # Create the move
+        CaroMove.objects.create(
+            game=self,
+            player=player,
+            row=row,
+            col=col,
+            symbol=current_symbol,
+            move_number=self.total_moves + 1
+        )
+        
+        self.total_moves += 1
+        
+        from django.utils import timezone
+        
+        # Check for winner
+        winner_symbol = self.check_winner()
+        if winner_symbol:
+            self.status = 'finished'
+            self.winner = self.player1 if winner_symbol == 'X' else self.player2
+            self.finished_at = timezone.now()
+            if self.started_at:
+                self.game_duration = self.finished_at - self.started_at
+            
+            # Award prize to winner
+            if self.winner and self.winner_prize > 0:
+                try:
+                    winner_wallet = self.winner.wallet
+                    winner_wallet.add_balance(
+                        self.winner_prize,
+                        'caro_win',
+                        f'Won Caro game in room {self.room_name}',
+                        self
+                    )
+                except Exception as e:
+                    import logging
+                    logger = logging.getLogger(__name__)
+                    logger.error(f"Error awarding prize: {e}")
+        else:
+            # Continue game - switch turn
+            self.current_turn = 'O' if current_symbol == 'X' else 'X'
+        
+        self.save()
+        return True, "Move successful"
+    
+    def check_winner(self):
+        """Check if there's a winner based on moves"""
+        moves = self.get_moves_list()
+        if not moves:
+            return None
+        
+        # Build board from moves
+        move_dict = {}
+        for move in moves:
+            move_dict[(move.row, move.col)] = move.symbol
+        
+        if not move_dict:
+            return None
+        
+        # Find board boundaries
+        rows = [r for r, c in move_dict.keys()]
+        cols = [c for r, c in move_dict.keys()]
+        min_row, max_row = min(rows), max(rows)
+        min_col, max_col = min(cols), max(cols)
+        
+        # Check all positions for winning patterns
+        directions = [(0, 1), (1, 0), (1, 1), (1, -1)]  # horizontal, vertical, diagonal
+        
+        for (row, col), symbol in move_dict.items():
+            for dr, dc in directions:
+                count = 1
+                
+                # Check forward direction
+                r, c = row + dr, col + dc
+                while (r, c) in move_dict and move_dict[(r, c)] == symbol:
+                    count += 1
+                    r, c = r + dr, c + dc
+                
+                # Check backward direction
+                r, c = row - dr, col - dc
+                while (r, c) in move_dict and move_dict[(r, c)] == symbol:
+                    count += 1
+                    r, c = r - dr, c - dc
+                
+                if count >= self.win_condition:
+                    return symbol
+        
+        return None
     
     def abandon_game(self, player):
         """Abandon game by player"""
@@ -190,11 +239,23 @@ class CaroGame(models.Model):
 
     def to_dict(self):
         """Convert to dictionary for API responses"""
-        result = {
+        # Serialize moves
+        moves_data = [
+            {
+                'row': move.row,
+                'col': move.col,
+                'symbol': move.symbol,
+                'move_number': move.move_number,
+                'player_username': move.player.username,
+                'timestamp': move.timestamp.isoformat()
+            }
+            for move in self.get_moves_list()
+        ]
+        
+        return {
             'id': self.id,
             'game_id': self.game_id,
-            'game_type': self.game_type,
-            'chat_id': self.chat_id,
+            'room_name': self.room_name,
             'player1': {
                 'username': self.player1.username,
                 'display_name': getattr(self.player1.profile, 'name', self.player1.username) if hasattr(self.player1, 'profile') else self.player1.username
@@ -203,8 +264,7 @@ class CaroGame(models.Model):
                 'username': self.player2.username,
                 'display_name': getattr(self.player2.profile, 'name', self.player2.username) if hasattr(self.player2, 'profile') else self.player2.username
             } if self.player2 else None,
-            'board_state': self.get_board(),
-            'moves': self.get_moves_list(),
+            'moves': moves_data,
             'current_turn': self.current_turn,
             'status': self.status,
             'winner': {
@@ -213,22 +273,15 @@ class CaroGame(models.Model):
             } if self.winner else None,
             'win_condition': self.win_condition,
             'total_moves': self.total_moves,
+            'bet_amount': self.bet_amount,
+            'total_pot': self.total_pot,
+            'winner_prize': self.winner_prize,
+            'house_fee': self.house_fee,
             'created_at': self.created_at.isoformat(),
             'updated_at': self.updated_at.isoformat(),
             'started_at': self.started_at.isoformat() if self.started_at else None,
             'finished_at': self.finished_at.isoformat() if self.finished_at else None,
         }
-        
-        # Add betting info for room games
-        if self.game_type == 'room':
-            result.update({
-                'bet_amount': self.bet_amount,
-                'total_pot': self.total_pot,
-                'winner_prize': self.winner_prize,
-                'house_fee': self.house_fee,
-            })
-        
-        return result
 
 
 # ===========================
@@ -243,29 +296,12 @@ def get_active_game(room_name: str):
     """Get active Caro game for room with betting info"""
     try:
         game = CaroGame.objects.filter(
-            game_type='room',
-            chat_id=room_name,
+            room_name=room_name,
             status__in=['waiting', 'playing']
         ).first()
         
         if game:
-            return {
-                'id': game.id,
-                'room_name': game.room_name,
-                'player1': game.player1.username,
-                'player2': game.player2.username if game.player2 else None,
-                'board_state': game.get_board(),
-                'moves': game.get_moves_list(),
-                'current_turn': game.current_turn,
-                'status': game.status,
-                'winner': game.winner.username if game.winner else None,
-                'created_at': game.created_at,
-                'updated_at': game.updated_at,
-                'bet_amount': game.bet_amount,
-                'total_pot': game.total_pot,
-                'winner_prize': game.winner_prize,
-                'house_fee': game.house_fee
-            }
+            return game.to_dict()
     except Exception as e:
         logger.error(f"Error getting Caro game from database: {e}")
     
@@ -336,29 +372,14 @@ def create_game(room_name: str, player1_username: str):
         
         # Create the game
         game = CaroGame.objects.create(
-            game_type='room',
-            chat_id=room_name,
+            room_name=room_name,
             player1=player1,
             bet_amount=10000
         )
         
         logger.info(f"Game created by {player1_username} in room {room_name}, bet amount deducted: 10,000")
         
-        return {
-            'id': game.id,
-            'room_name': game.room_name,
-            'player1': game.player1.username,
-            'player2': None,
-            'board_state': game.get_board(),
-            'moves': game.get_moves_list(),
-            'current_turn': game.current_turn,
-            'status': game.status,
-            'winner': None,
-            'created_at': game.created_at,
-            'updated_at': game.updated_at,
-            'bet_amount': game.bet_amount,
-            'total_pot': game.total_pot
-        }
+        return game.to_dict()
     except User.DoesNotExist:
         logger.error(f"User {player1_username} not found")
         return {'error': 'user_not_found'}
