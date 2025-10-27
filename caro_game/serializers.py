@@ -3,58 +3,101 @@ from django.contrib.auth.models import User
 from .models import CaroGame
 
 
+class UserSimpleSerializer(serializers.ModelSerializer):
+    """Simple user serializer"""
+    class Meta:
+        model = User
+        fields = ['username', 'first_name', 'last_name']
+    
+    def to_representation(self, instance):
+        data = super().to_representation(instance)
+        # Add display_name
+        display_name = data.get('first_name') or data.get('username')
+        data['display_name'] = display_name
+        return data
+
+
+class CaroMoveDetailSerializer(serializers.Serializer):
+    """Serializer for move details"""
+    row = serializers.IntegerField()
+    col = serializers.IntegerField()
+    symbol = serializers.CharField()
+    move_number = serializers.IntegerField()
+    player_username = serializers.CharField()
+    timestamp = serializers.DateTimeField()
+
+
 class CaroGameSerializer(serializers.ModelSerializer):
     """Caro game serializer"""
-    player1_username = serializers.CharField(source='player1.username', read_only=True)
-    player2_username = serializers.CharField(source='player2.username', read_only=True)
-    winner_username = serializers.CharField(source='winner.username', read_only=True)
-    board = serializers.SerializerMethodField()
+    player1 = UserSimpleSerializer(read_only=True)
+    player2 = UserSimpleSerializer(read_only=True, allow_null=True)
+    winner = UserSimpleSerializer(read_only=True, allow_null=True)
+    moves = serializers.SerializerMethodField()
     
     class Meta:
         model = CaroGame
         fields = [
-            'id', 'game_id', 'chat_id', 'player1', 'player2',
-            'player1_username', 'player2_username', 
-            'board_state', 'board', 'current_turn', 'status',
-            'winner', 'winner_username', 'move_count', 'last_move',
-            'created_at', 'updated_at', 'finished_at'
+            'id', 'game_id', 'room_name', 
+            'player1', 'player2', 'winner',
+            'current_turn', 'status', 'win_condition',
+            'total_moves', 'moves',
+            'bet_amount', 'total_pot', 'winner_prize', 'house_fee',
+            'created_at', 'updated_at', 'started_at', 'finished_at'
         ]
         read_only_fields = [
-            'id', 'game_id', 'move_count', 'created_at', 
-            'updated_at', 'finished_at'
+            'id', 'game_id', 'total_moves', 
+            'created_at', 'updated_at', 'started_at', 'finished_at'
         ]
     
-    def get_board(self, obj):
-        """Parse board state JSON"""
-        try:
-            return obj.get_board()
-        except:
-            return []
+    def get_moves(self, obj):
+        """Get all moves for the game"""
+        moves = obj.moves.all().order_by('move_number')
+        return [{
+            'row': move.row,
+            'col': move.col,
+            'symbol': move.symbol,
+            'move_number': move.move_number,
+            'player_username': move.player.username,
+            'timestamp': move.timestamp.isoformat(),
+        } for move in moves]
 
 
-class CaroGameCreateSerializer(serializers.ModelSerializer):
+class CaroGameCreateSerializer(serializers.Serializer):
     """Serializer for creating Caro games"""
-    opponent_id = serializers.IntegerField(write_only=True, required=False)
+    room_name = serializers.CharField(min_length=3, max_length=30)
     
-    class Meta:
-        model = CaroGame
-        fields = ['chat_id', 'opponent_id']
+    def validate_room_name(self, value):
+        """Check if room name already exists"""
+        if CaroGame.objects.filter(room_name=value, status__in=['waiting', 'playing']).exists():
+            raise serializers.ValidationError("Room name already exists")
+        return value
     
     def create(self, validated_data):
         player1 = self.context['request'].user
-        opponent_id = validated_data.pop('opponent_id', None)
+        room_name = validated_data['room_name']
         
-        player2 = None
-        if opponent_id:
-            try:
-                player2 = User.objects.get(id=opponent_id)
-            except User.DoesNotExist:
-                raise serializers.ValidationError("Opponent not found")
+        # Check user balance (assuming 10,000 coins bet)
+        from user_wallet.models import Wallet
+        try:
+            wallet = Wallet.objects.get(user=player1)
+            if wallet.balance < 10000:
+                raise serializers.ValidationError("Insufficient balance")
+            
+            # Deduct bet amount using the model's method
+            wallet.deduct_balance(
+                amount=10000,
+                transaction_type='game_bet',
+                description=f'Bet for Caro game room: {room_name}'
+            )
+        except Wallet.DoesNotExist:
+            raise serializers.ValidationError("Wallet not found")
         
         game = CaroGame.objects.create(
             player1=player1,
-            player2=player2,
-            **validated_data
+            room_name=room_name,
+            bet_amount=10000,
+            total_pot=10000,
+            status='waiting'
         )
         
         return game

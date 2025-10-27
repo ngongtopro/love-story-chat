@@ -72,6 +72,7 @@ class WalletTransaction(models.Model):
         ('game_bet', 'Game Bet'),
         ('game_win', 'Game Win'),
         ('game_loss', 'Game Loss'),
+        ('game_refund', 'Game Refund'),
         ('admin_add', 'Admin Added'),
         ('admin_deduct', 'Admin Deducted'),
     ]

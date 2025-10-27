@@ -4,13 +4,6 @@ from . import views
 app_name = 'caro_game'
 
 urlpatterns = [
-    # Private Chat Caro Game URLs
-    path('private/create/', views.create_private_caro_game, name='create_private_caro_game'),
-    path('private/join/<str:room_code>/', views.join_private_caro_game, name='join_private_caro_game'), 
-    path('private/move/', views.make_private_caro_move, name='make_private_caro_move'),
-    path('private/status/<str:room_code>/', views.get_private_caro_game, name='get_private_caro_game'),
-    path('private/abandon/<str:room_code>/', views.abandon_private_caro_game, name='abandon_private_caro_game'),
-    
     # Room Caro Game URLs (Legacy)
     path('rooms/', views.list_caro_rooms, name='list_caro_rooms'),
     path('room/create/', views.create_room_caro_game, name='create_room_caro_game'),

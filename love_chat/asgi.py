@@ -20,13 +20,15 @@ django_asgi_app = get_asgi_application()
 # Import after Django is setup
 from channels.routing import ProtocolTypeRouter, URLRouter
 from channels.auth import AuthMiddlewareStack
-from chat import routing
+from chat import routing as chat_routing
+from caro_game import routing as caro_routing
 
 application = ProtocolTypeRouter({
     "http": django_asgi_app,
     "websocket": AuthMiddlewareStack(
         URLRouter(
-            routing.websocket_urlpatterns
+            chat_routing.websocket_urlpatterns +
+            caro_routing.websocket_urlpatterns
         )
     ),
 })
