@@ -1,5 +1,7 @@
 from django.db import models
 from django.contrib.auth.models import User
+from django.db.models.signals import post_save
+from django.dispatch import receiver
 
 
 # ===========================
@@ -96,3 +98,35 @@ class WalletTransaction(models.Model):
     
     def __str__(self):
         return f'{self.wallet.user.username}: {self.amount:+,} đồng ({self.get_transaction_type_display()})'
+
+
+# ===========================
+# REALTIME SIGNALS
+# ===========================
+
+@receiver(post_save, sender=Wallet)
+def wallet_updated(sender, instance, created, **kwargs):
+    """Send realtime update when wallet balance changes"""
+    if not created:  # Only for updates, not creation
+        try:
+            from chat.realtime_helpers import notify_wallet_updated
+            notify_wallet_updated(
+                user_id=instance.user.id,
+                balance=instance.balance
+            )
+        except Exception as e:
+            print(f"Error sending wallet update: {e}")
+
+
+@receiver(post_save, sender=WalletTransaction)
+def transaction_created(sender, instance, created, **kwargs):
+    """Send realtime update when new transaction is created"""
+    if created:
+        try:
+            from chat.realtime_helpers import notify_wallet_transaction
+            notify_wallet_transaction(
+                user_id=instance.wallet.user.id,
+                transaction=instance
+            )
+        except Exception as e:
+            print(f"Error sending transaction notification: {e}")
