@@ -79,27 +79,23 @@ class PrivateMessageSerializer(serializers.ModelSerializer):
 
 class PrivateMessageCreateSerializer(serializers.ModelSerializer):
     """Serializer for creating private messages"""
-    recipient_id = serializers.IntegerField(write_only=True)
     
     class Meta:
         model = PrivateMessage
-        fields = ['content', 'message_type', 'attachment', 'recipient_id']
+        fields = ['chat', 'content', 'message_type', 'attachment']
+    
+    def validate_chat(self, value):
+        """Validate that the user is part of this chat"""
+        user = self.context['request'].user
+        if value.user1 != user and value.user2 != user:
+            raise serializers.ValidationError("You are not part of this chat")
+        return value
     
     def create(self, validated_data):
-        recipient_id = validated_data.pop('recipient_id')
         sender = self.context['request'].user
-        
-        try:
-            recipient = User.objects.get(id=recipient_id)
-        except User.DoesNotExist:
-            raise serializers.ValidationError("Recipient not found")
-        
-        # Get or create private chat
-        chat, created = PrivateChat.get_or_create_chat(sender, recipient)
         
         # Create message
         message = PrivateMessage.objects.create(
-            chat=chat,
             sender=sender,
             **validated_data
         )

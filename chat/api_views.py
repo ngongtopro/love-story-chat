@@ -205,8 +205,9 @@ class ChatAPIView(APIView):
         except User.DoesNotExist:
             return Response({'error': 'User not found'}, status=status.HTTP_404_NOT_FOUND)
         
-        if other_user == request.user:
-            return Response({'error': 'Cannot chat with yourself'}, status=status.HTTP_400_BAD_REQUEST)
+        # Allow self-chat for "Saved Messages" or temporary file storage
+        # if other_user == request.user:
+        #     return Response({'error': 'Cannot chat with yourself'}, status=status.HTTP_400_BAD_REQUEST)
         
         chat, created = PrivateChat.get_or_create_chat(request.user, other_user)
         serializer = PrivateChatSerializer(chat, context={'request': request})

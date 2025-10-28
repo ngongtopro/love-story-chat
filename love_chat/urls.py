@@ -37,10 +37,10 @@ urlpatterns = [
     
     # API Endpoints
     path('', include('auth_urls')),
-    path('', include('chat.api_urls')),
-    path('', include('caro_game.api_urls')),
-    path('', include('user_wallet.api_urls')),
-    path('', include('happy_farm.api_urls')),
+    path('api/chat/', include('chat.api_urls')),
+    path('api/caro/', include('caro_game.api_urls')),
+    path('api/wallet/', include('user_wallet.api_urls')),
+    path('api/farm/', include('happy_farm.api_urls')),
     
     # Legacy template-based URLs (optional, can be removed for pure API)
     path('legacy/', include('chat.urls')),

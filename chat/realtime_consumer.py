@@ -151,6 +151,22 @@ class RealtimeConsumer(AsyncWebsocketConsumer):
             'timestamp': event.get('timestamp')
         }))
 
+    async def chat_user_status(self, event):
+        """Send user online status change"""
+        await self.send(text_data=json.dumps({
+            'type': 'chat.user_status',
+            'data': event['data'],
+            'timestamp': event.get('timestamp')
+        }))
+
+    async def chat_private_message(self, event):
+        """Send new private message notification"""
+        await self.send(text_data=json.dumps({
+            'type': 'chat.private_message',
+            'data': event['data'],
+            'timestamp': event.get('timestamp')
+        }))
+
     async def chat_new_message(self, event):
         """Send new chat message notification"""
         await self.send(text_data=json.dumps({

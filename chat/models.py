@@ -126,10 +126,10 @@ class PrivateChat(models.Model):
     
     def get_unread_count(self, user):
         """Get unread message count for user"""
+        # Filter messages NOT sent by the user (sent by the other person)
         return self.messages.filter(
-            sender__ne=user,
             is_read=False
-        ).count()
+        ).exclude(sender=user).count()
     
     def is_blocked_by(self, user):
         """Check if chat is blocked by user"""

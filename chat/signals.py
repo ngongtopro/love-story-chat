@@ -1,11 +1,15 @@
-from django.db.models.signals import post_save
+from django.db.models.signals import post_save, post_delete
 from django.dispatch import receiver
 from django.contrib.auth.models import User
-from .models import UserProfile, Room
+from .models import UserProfile, Room, PrivateMessage
 from user_wallet.models import Wallet
 from channels.layers import get_channel_layer
 from asgiref.sync import async_to_sync
 import logging
+from .realtime_helpers import (
+    notify_user_online_status,
+    notify_private_message
+)
 
 logger = logging.getLogger(__name__)
 
@@ -113,3 +117,41 @@ def room_created_signal(sender, instance, created, **kwargs):
             logger.error(f"Error sending room signal: {e}")
     else:
         logger.warning("Channel layer not available for room signals")
+
+
+@receiver(post_save, sender=UserProfile)
+def user_profile_status_updated(sender, instance, created, **kwargs):
+    """Notify when user online status changes"""
+    if not created:
+        # Notify all users about status change
+        notify_user_online_status(
+            user_id=instance.user.id,
+            is_online=instance.is_online,
+            username=instance.user.username
+        )
+
+
+@receiver(post_save, sender=PrivateMessage)
+def private_message_notification(sender, instance, created, **kwargs):
+    """Notify when new private message is created"""
+    if created:
+        notify_private_message(instance)
+
+
+@receiver(post_save, sender=UserProfile)
+def user_profile_status_updated(sender, instance, created, **kwargs):
+    """Notify when user online status changes"""
+    if not created:
+        # Notify all users about status change
+        notify_user_online_status(
+            user_id=instance.user.id,
+            is_online=instance.is_online,
+            username=instance.user.username
+        )
+
+
+@receiver(post_save, sender=PrivateMessage)
+def private_message_notification(sender, instance, created, **kwargs):
+    """Notify when new private message is created"""
+    if created:
+        notify_private_message(instance)

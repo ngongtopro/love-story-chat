@@ -100,6 +100,17 @@ def notify_caro_room_deleted(room_id: int, room_name: str):
     send_realtime_update('caro.room_deleted', data, broadcast=True)
 
 
+def notify_user_online_status(user_id: int, is_online: bool, username: str):
+    """Notify all users that a user's online status changed"""
+    data = {
+        'user_id': user_id,
+        'username': username,
+        'is_online': is_online,
+        'timestamp': datetime.now().isoformat()
+    }
+    send_realtime_update('chat.user_status', data, broadcast=True)
+
+
 def notify_caro_game_started(room):
     """Notify players that game started"""
     from caro_game.serializers import CaroGameSerializer
@@ -162,6 +173,20 @@ def notify_chat_new_message(message_obj):
     # Send to all room members
     # You'll need to implement logic to get room members
     send_realtime_update('chat.new_message', data, broadcast=True)
+
+
+def notify_private_message(private_message):
+    """Notify participants of a new private message"""
+    from .serializers import PrivateMessageSerializer
+    
+    data = PrivateMessageSerializer(private_message).data
+    
+    # Get the chat and notify both participants
+    chat = private_message.chat
+    participants = [chat.user1.id, chat.user2.id]
+    
+    for user_id in participants:
+        send_realtime_update('chat.private_message', data, user_id=user_id)
 
 
 def notify_general(user_id: int, message: str, level='info'):
